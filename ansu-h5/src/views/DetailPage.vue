@@ -5,10 +5,13 @@
     <div class="detail-container" v-if="!loading">
       <template v-if="order">
         <!-- 订单头部信息 -->
-        <div class="order-header">
+        <div class="order-header" :class="{ 'outsourced': order.isOutsourced, 'self-owned': !order.isOutsourced }">
           <div class="order-title">
             <h2>{{ order.orderNo }}</h2>
-            <span class="order-date">{{ formatDate(order.createTime) }}</span>
+            <div class="order-meta">
+              <span class="order-date">{{ formatDate(order.createTime) }}</span>
+              <span class="order-type">{{ order.isOutsourced ? '外包' : '自有' }}</span>
+            </div>
           </div>
           <div class="order-customer">{{ order.customerCompanyName }}</div>
           <div class="status-row">
@@ -119,7 +122,7 @@
                 <div class="cost-right">
                   <div class="cost-time">{{ formatDateTime(cost.createTime) }}</div>
                   <div class="cost-amount">¥{{ cost.amount }}</div>
-                  <t-button size="small" theme="danger" variant="text" @click="deleteCost(cost.id)">
+                  <t-button size="small" theme="primary" variant="text" class="delete-btn" @click="deleteCost(cost.id)">
                     删除
                   </t-button>
                 </div>
@@ -162,10 +165,10 @@
 
                   <!-- 未解决的事件操作 -->
                   <div v-else class="event-actions">
-                    <t-button size="small" theme="success" variant="text" @click="resolveEvent(event.id)">
+                    <t-button size="small" theme="primary" variant="text" class="resolve-btn" @click="resolveEvent(event.id)">
                       标记解决
                     </t-button>
-                    <t-button size="small" theme="danger" variant="text" @click="deleteEvent(event.id)">
+                    <t-button size="small" theme="primary" variant="text" class="delete-btn" @click="deleteEvent(event.id)">
                       删除
                     </t-button>
                   </div>
@@ -266,7 +269,7 @@
         <!-- 操作按钮 -->
         <div class="action-buttons">
           <t-button theme="primary" block @click="handleEdit">编辑订单</t-button>
-          <t-button theme="danger" block @click="handleDelete">删除订单</t-button>
+          <t-button theme="primary" block class="delete-order-btn" @click="handleDelete">删除订单</t-button>
         </div>
       </template>
 
@@ -654,17 +657,27 @@ onMounted(() => {
 
 /* 订单头部 */
 .order-header {
-  background: linear-gradient(135deg, #0052d9, #1890ff);
   color: white;
   padding: 16px;
   border-radius: 12px;
   margin-bottom: 16px;
+  position: relative;
+}
+
+/* 自有订单背景 */
+.order-header.self-owned {
+  background: linear-gradient(135deg, #0052d9, #1890ff);
+}
+
+/* 外包订单背景 */
+.order-header.outsourced {
+  background: linear-gradient(135deg, #ff7a45, #ffa940);
 }
 
 .order-title {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 8px;
 }
 
@@ -674,9 +687,25 @@ onMounted(() => {
   font-weight: 600;
 }
 
+.order-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
 .order-date {
   font-size: 12px;
   opacity: 0.8;
+}
+
+.order-type {
+  font-size: 12px;
+  font-weight: 600;
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .order-customer {
@@ -1043,6 +1072,20 @@ onMounted(() => {
   color: #999;
   padding: 20px;
   font-size: 14px;
+}
+
+/* 按钮颜色样式 */
+.delete-btn {
+  color: #ff4d4f !important;
+}
+
+.resolve-btn {
+  color: #52c41a !important;
+}
+
+.delete-order-btn {
+  background-color: #ff4d4f !important;
+  border-color: #ff4d4f !important;
 }
 
 .costs .cost-item {

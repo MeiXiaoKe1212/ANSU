@@ -80,23 +80,26 @@
           
           <t-form-item label="影响程度" name="impactLevel" :rules="[{ required: true, message: '请选择影响程度' }]">
             <div class="impact-level-buttons">
-              <t-button 
-                size="small" 
-                :theme="formData.impactLevel === 'LOW' ? 'success' : 'default'"
+              <t-button
+                size="small"
+                :theme="formData.impactLevel === 'LOW' ? 'primary' : 'default'"
+                :class="{ 'impact-low': formData.impactLevel === 'LOW' }"
                 @click="formData.impactLevel = 'LOW'"
               >
                 轻微
               </t-button>
-              <t-button 
-                size="small" 
-                :theme="formData.impactLevel === 'MEDIUM' ? 'warning' : 'default'"
+              <t-button
+                size="small"
+                :theme="formData.impactLevel === 'MEDIUM' ? 'primary' : 'default'"
+                :class="{ 'impact-medium': formData.impactLevel === 'MEDIUM' }"
                 @click="formData.impactLevel = 'MEDIUM'"
               >
                 中等
               </t-button>
-              <t-button 
-                size="small" 
-                :theme="formData.impactLevel === 'HIGH' ? 'danger' : 'default'"
+              <t-button
+                size="small"
+                :theme="formData.impactLevel === 'HIGH' ? 'primary' : 'default'"
+                :class="{ 'impact-high': formData.impactLevel === 'HIGH' }"
                 @click="formData.impactLevel = 'HIGH'"
               >
                 严重
@@ -318,5 +321,21 @@ const closeForm = () => {
 
 .form-actions .t-button {
   flex: 1;
+}
+
+/* 影响程度按钮样式 */
+.impact-low.t-button--theme-primary {
+  background-color: #52c41a !important;
+  border-color: #52c41a !important;
+}
+
+.impact-medium.t-button--theme-primary {
+  background-color: #fa8c16 !important;
+  border-color: #fa8c16 !important;
+}
+
+.impact-high.t-button--theme-primary {
+  background-color: #ff4d4f !important;
+  border-color: #ff4d4f !important;
 }
 </style>
