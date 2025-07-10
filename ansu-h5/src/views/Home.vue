@@ -1,31 +1,42 @@
 <template>
   <div>
-    <t-navbar title="主页" fixed />
-    
+    <t-navbar title="运输管理系统" fixed />
+
     <div class="home-container">
       <div class="welcome-card">
         <h2>欢迎, {{ username }}</h2>
-        <p>这是您的账单统计信息</p>
+        <p>运输中介管理系统 - 订单统计信息</p>
       </div>
 
-      <!-- 账单统计卡片 -->
+      <!-- 订单统计卡片 -->
       <div class="stats-card">
         <div class="stats-summary">
           <div class="stats-item">
-            <div class="stats-value">{{ billStore.bills.length }}</div>
-            <div class="stats-label">账单总数</div>
+            <div class="stats-value">{{ orderStore.orders.length }}</div>
+            <div class="stats-label">订单总数</div>
           </div>
           <div class="stats-item">
-            <div class="stats-value">¥{{ totalBillAmount }}</div>
-            <div class="stats-label">总金额</div>
+            <div class="stats-value">¥{{ totalRevenue }}</div>
+            <div class="stats-label">总收入</div>
+          </div>
+          <div class="stats-item">
+            <div class="stats-value">¥{{ totalProfit }}</div>
+            <div class="stats-label">总利润</div>
           </div>
           <div class="stats-item">
             <div class="stats-value">{{ outsourcedCount }}</div>
-            <div class="stats-label">外派账单</div>
+            <div class="stats-label">外包订单</div>
           </div>
-          <div class="stats-item">
-            <div class="stats-value">{{ selfOwnedCount }}</div>
-            <div class="stats-label">自有账单</div>
+        </div>
+      </div>
+
+      <!-- 状态统计 -->
+      <div class="status-stats">
+        <h3>订单状态统计</h3>
+        <div class="status-grid">
+          <div class="status-item" v-for="(count, status) in statusStats" :key="status">
+            <div class="status-count">{{ count }}</div>
+            <div class="status-name">{{ getStatusName(status) }}</div>
           </div>
         </div>
       </div>
@@ -67,13 +78,13 @@
     </div>
 
     <!-- 悬浮按钮 -->
-    <t-fab class="custom-fab" :icon="addIconFunc" @click="showAddBillForm" />
+    <t-fab class="custom-fab" :icon="addIconFunc" @click="showAddOrderForm" />
 
-    <!-- 账单表单 -->
-    <bill-form 
-      v-model:visible="billFormVisible"
-      :bill-data="currentBillData"
-      @submit="handleBillSubmit"
+    <!-- 运输订单表单 -->
+    <transport-order-form
+      v-model:visible="orderFormVisible"
+      :order-data="currentOrderData"
+      @submit="handleOrderSubmit"
       @close="handleFormClose"
     />
   </div>
@@ -83,8 +94,8 @@
 import { ref, computed, h, onMounted, watch, onUnmounted } from 'vue'
 import { AddIcon } from 'tdesign-icons-vue-next'
 import { Toast, Tabs, TabPanel, RadioGroup, Radio } from 'tdesign-mobile-vue'
-import { useBillStore } from '../stores/billStore'
-import BillForm from '../components/BillForm.vue'
+import { useTransportOrderStore } from '../stores/transportOrderStore'
+import TransportOrderForm from '../components/TransportOrderForm.vue'
 import * as echarts from 'echarts/core'
 import { 
   TitleComponent, 
@@ -107,7 +118,7 @@ echarts.use([
   CanvasRenderer
 ])
 
-const billStore = useBillStore()
+const orderStore = useTransportOrderStore()
 const username = computed(() => localStorage.getItem('username') || '用户')
 
 // 图表相关
@@ -116,20 +127,48 @@ const chartType = ref('line')
 let pieChartInstance = null
 let trendChartInstance = null
 
-// 账单统计数据
-const totalBillAmount = computed(() => {
-  return billStore.bills
-    .reduce((sum, bill) => sum + (bill.totalCost || 0), 0)
+// 订单表单控制
+const orderFormVisible = ref(false)
+const currentOrderData = ref({})
+
+// 订单统计数据
+const totalRevenue = computed(() => {
+  return orderStore.orders
+    .reduce((sum, order) => sum + (order.actualPrice || 0), 0)
+    .toFixed(2)
+})
+
+const totalProfit = computed(() => {
+  return orderStore.orders
+    .reduce((sum, order) => sum + (order.profit || 0), 0)
     .toFixed(2)
 })
 
 const outsourcedCount = computed(() => {
-  return billStore.bills.filter(bill => bill.isOutsourced).length
+  return orderStore.orders.filter(order => order.isOutsourced === 1).length
 })
 
-const selfOwnedCount = computed(() => {
-  return billStore.bills.filter(bill => !bill.isOutsourced).length
+// 状态统计
+const statusStats = computed(() => {
+  const stats = {}
+  orderStore.orders.forEach(order => {
+    const status = order.transportStatus
+    stats[status] = (stats[status] || 0) + 1
+  })
+  return stats
 })
+
+// 获取状态中文名称
+const getStatusName = (status) => {
+  const statusMap = {
+    'CREATED': '已创建',
+    'DEPARTED': '已出发',
+    'TRANSPORTING': '运输中',
+    'EXCEPTION': '异常',
+    'DELIVERED': '已送达'
+  }
+  return statusMap[status] || status
+}
 
 // 初始化饼图
 const initPieChart = () => {
@@ -324,29 +363,29 @@ const handleResize = () => {
 // 悬浮按钮图标
 const addIconFunc = () => h(AddIcon, { size: '24px' })
 
-// 账单表单控制
-const billFormVisible = ref(false)
-const currentBillData = ref({})
-
-// 显示添加账单表单
-const showAddBillForm = () => {
-  currentBillData.value = {}
-  billFormVisible.value = true
+// 显示添加订单表单
+const showAddOrderForm = () => {
+  currentOrderData.value = {}
+  orderFormVisible.value = true
 }
 
-// 处理账单提交
-const handleBillSubmit = (formData) => {
-  billStore.addBill(formData)
-  Toast({ message: '账单添加成功', theme: 'success' })
-  
-  // 更新图表
-  initPieChart()
-  updateTrendChart()
+// 处理订单提交
+const handleOrderSubmit = async (formData) => {
+  try {
+    await orderStore.createOrder(formData)
+    Toast({ message: '订单创建成功', theme: 'success' })
+
+    // 更新图表
+    initPieChart()
+    updateTrendChart()
+  } catch (error) {
+    Toast({ message: error.message || '创建失败', theme: 'error' })
+  }
 }
 
 // 处理表单关闭
 const handleFormClose = () => {
-  currentBillData.value = {}
+  currentOrderData.value = {}
 }
 
 // 组件挂载后初始化图表
@@ -462,6 +501,46 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   margin-bottom: 16px;
+}
+
+.status-stats {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.status-stats h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 12px;
+}
+
+.status-item {
+  text-align: center;
+  padding: 12px 8px;
+  border-radius: 8px;
+  background-color: #f5f7fa;
+  border: 1px solid #e7e7e7;
+}
+
+.status-count {
+  font-size: 18px;
+  font-weight: bold;
+  color: #0052d9;
+  margin-bottom: 4px;
+}
+
+.status-name {
+  font-size: 12px;
+  color: #666;
 }
 
 @media (min-width: 768px) {
