@@ -19,21 +19,69 @@
       <div class="filter-section">
         <div class="filter-group">
           <label>运输状态:</label>
-          <t-select v-model="transportStatusFilter" placeholder="全部状态" clearable>
-            <t-option value="CREATED" label="已创建" />
-            <t-option value="DEPARTED" label="已出发" />
-            <t-option value="TRANSPORTING" label="运输中" />
-            <t-option value="EXCEPTION" label="异常" />
-            <t-option value="DELIVERED" label="已送达" />
-          </t-select>
+          <div class="filter-buttons">
+            <t-button
+              size="small"
+              :theme="transportStatusFilter === '' ? 'primary' : 'default'"
+              @click="transportStatusFilter = ''"
+            >
+              全部
+            </t-button>
+            <t-button
+              size="small"
+              :theme="transportStatusFilter === 'CREATED' ? 'primary' : 'default'"
+              @click="transportStatusFilter = 'CREATED'"
+            >
+              已创建
+            </t-button>
+            <t-button
+              size="small"
+              :theme="transportStatusFilter === 'TRANSPORTING' ? 'primary' : 'default'"
+              @click="transportStatusFilter = 'TRANSPORTING'"
+            >
+              运输中
+            </t-button>
+            <t-button
+              size="small"
+              :theme="transportStatusFilter === 'DELIVERED' ? 'primary' : 'default'"
+              @click="transportStatusFilter = 'DELIVERED'"
+            >
+              已送达
+            </t-button>
+          </div>
         </div>
         <div class="filter-group">
           <label>款项状态:</label>
-          <t-select v-model="paymentStatusFilter" placeholder="全部状态" clearable>
-            <t-option value="UNPAID" label="未付款" />
-            <t-option value="PREPAID" label="已预付费" />
-            <t-option value="PAID" label="已结款" />
-          </t-select>
+          <div class="filter-buttons">
+            <t-button
+              size="small"
+              :theme="paymentStatusFilter === '' ? 'primary' : 'default'"
+              @click="paymentStatusFilter = ''"
+            >
+              全部
+            </t-button>
+            <t-button
+              size="small"
+              :theme="paymentStatusFilter === 'UNPAID' ? 'primary' : 'default'"
+              @click="paymentStatusFilter = 'UNPAID'"
+            >
+              未付款
+            </t-button>
+            <t-button
+              size="small"
+              :theme="paymentStatusFilter === 'PREPAID' ? 'primary' : 'default'"
+              @click="paymentStatusFilter = 'PREPAID'"
+            >
+              已预付费
+            </t-button>
+            <t-button
+              size="small"
+              :theme="paymentStatusFilter === 'PAID' ? 'primary' : 'default'"
+              @click="paymentStatusFilter = 'PAID'"
+            >
+              已结款
+            </t-button>
+          </div>
         </div>
       </div>
 
@@ -273,16 +321,22 @@ onMounted(() => {
 
 .filter-group {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
   flex: 1;
-  min-width: 140px;
+  min-width: 200px;
 }
 
 .filter-group label {
   font-size: 14px;
   color: #666;
   white-space: nowrap;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .list-items {

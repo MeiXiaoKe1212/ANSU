@@ -259,20 +259,20 @@ const getTrendData = () => {
     amountByDate[date] = 0
   })
   
-  billStore.bills.forEach(bill => {
-    if (!bill.createTime) return
-    
-    const billDate = new Date(bill.createTime)
+  orderStore.orders.forEach(order => {
+    if (!order.createTime) return
+
+    const orderDate = new Date(order.createTime)
     let dateKey
-    
+
     if (activeTimeRange.value === 'halfYear') {
-      dateKey = formatMonth(billDate)
+      dateKey = formatMonth(orderDate)
     } else {
-      dateKey = formatDate(billDate)
+      dateKey = formatDate(orderDate)
     }
-    
+
     if (amountByDate[dateKey] !== undefined) {
-      amountByDate[dateKey] += (bill.totalCost || 0)
+      amountByDate[dateKey] += (order.actualPrice || order.quotedPrice || 0)
     }
   })
   
