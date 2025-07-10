@@ -44,7 +44,7 @@
       <!-- 饼图：外派/自有比例 -->
       <div class="chart-card">
         <div class="card-header">
-          <h3>账单类型分布</h3>
+          <h3>订单类型分布</h3>
         </div>
         <div class="card-body">
           <div id="pieChart" class="chart-container"></div>
@@ -91,7 +91,7 @@
 </template>
 
 <script setup>
-import { ref, computed, h, onMounted, watch, onUnmounted } from 'vue'
+import { ref, computed, h, onMounted, watch, onUnmounted, nextTick } from 'vue'
 import { AddIcon } from 'tdesign-icons-vue-next'
 import { Toast, Tabs, TabPanel, RadioGroup, Radio } from 'tdesign-mobile-vue'
 import { useTransportOrderStore } from '../stores/transportOrderStore'
@@ -146,6 +146,10 @@ const totalProfit = computed(() => {
 
 const outsourcedCount = computed(() => {
   return orderStore.orders.filter(order => order.isOutsourced === 1).length
+})
+
+const selfOwnedCount = computed(() => {
+  return orderStore.orders.filter(order => order.isOutsourced === 0).length
 })
 
 // 状态统计
@@ -210,8 +214,8 @@ const initPieChart = () => {
           show: false
         },
         data: [
-          { value: outsourcedCount.value, name: '外派账单' },
-          { value: selfOwnedCount.value, name: '自有账单' }
+          { value: outsourcedCount.value, name: '外包订单' },
+          { value: selfOwnedCount.value, name: '自有订单' }
         ]
       }
     ]
@@ -390,9 +394,12 @@ const handleFormClose = () => {
 
 // 组件挂载后初始化图表
 onMounted(() => {
-  initPieChart()
-  initTrendChart()
-  
+  // 使用nextTick确保DOM已经渲染完成
+  nextTick(() => {
+    initPieChart()
+    initTrendChart()
+  })
+
   window.addEventListener('resize', handleResize)
 })
 
