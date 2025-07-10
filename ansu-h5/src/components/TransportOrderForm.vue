@@ -1,5 +1,5 @@
 <template>
-  <t-popup v-model="visible" placement="bottom" :close-on-overlay-click="false">
+  <t-popup :visible="visible" @update:visible="updateVisible" placement="bottom" :close-on-overlay-click="false">
     <div class="order-form">
       <div class="form-header">
         <h3>{{ isEdit ? '编辑订单' : '新增订单' }}</h3>
@@ -141,6 +141,11 @@ const emit = defineEmits(['update:visible', 'submit', 'close'])
 const form = ref(null)
 const submitting = ref(false)
 const isEdit = computed(() => Object.keys(props.orderData).length > 0)
+
+// 更新visible状态
+const updateVisible = (value) => {
+  emit('update:visible', value)
+}
 
 // 表单数据
 const formData = reactive({
