@@ -124,32 +124,38 @@ const currentOrderData = ref({})
 
 // 订单统计数据
 const totalRevenue = computed(() => {
+  if (!orderStore.orders || !Array.isArray(orderStore.orders)) return '0.00'
   return orderStore.orders
     .reduce((sum, order) => sum + (order.actualPrice || 0), 0)
     .toFixed(2)
 })
 
 const totalProfit = computed(() => {
+  if (!orderStore.orders || !Array.isArray(orderStore.orders)) return '0.00'
   return orderStore.orders
     .reduce((sum, order) => sum + (order.profit || 0), 0)
     .toFixed(2)
 })
 
 const outsourcedCount = computed(() => {
+  if (!orderStore.orders || !Array.isArray(orderStore.orders)) return 0
   return orderStore.orders.filter(order => order.isOutsourced === 1).length
 })
 
 const selfOwnedCount = computed(() => {
+  if (!orderStore.orders || !Array.isArray(orderStore.orders)) return 0
   return orderStore.orders.filter(order => order.isOutsourced === 0).length
 })
 
 // 状态统计
 const statusStats = computed(() => {
   const stats = {}
-  orderStore.orders.forEach(order => {
-    const status = order.transportStatus
-    stats[status] = (stats[status] || 0) + 1
-  })
+  if (orderStore.orders && Array.isArray(orderStore.orders)) {
+    orderStore.orders.forEach(order => {
+      const status = order.transportStatus
+      stats[status] = (stats[status] || 0) + 1
+    })
+  }
   return stats
 })
 
@@ -250,26 +256,29 @@ const getTrendData = () => {
     amountByDate[date] = 0
   })
   
-  orderStore.orders.forEach(order => {
-    if (!order.createTime) return
+  // 确保orders存在
+  if (orderStore.orders && Array.isArray(orderStore.orders)) {
+    orderStore.orders.forEach(order => {
+      if (!order.createTime) return
 
-    const orderDate = new Date(order.createTime)
-    let dateKey
+      const orderDate = new Date(order.createTime)
+      let dateKey
 
-    if (activeTimeRange.value === 'halfYear') {
-      dateKey = formatMonth(orderDate)
-    } else {
-      dateKey = formatDate(orderDate)
-    }
+      if (activeTimeRange.value === 'halfYear') {
+        dateKey = formatMonth(orderDate)
+      } else {
+        dateKey = formatDate(orderDate)
+      }
 
-    if (amountByDate[dateKey] !== undefined) {
-      amountByDate[dateKey] += (order.actualPrice || order.quotedPrice || 0)
-    }
-  })
+      if (amountByDate[dateKey] !== undefined) {
+        amountByDate[dateKey] += (order.actualPrice || order.quotedPrice || 0)
+      }
+    })
+  }
 
   return {
-    dates: Object.keys(profitByDate),
-    profits: Object.values(profitByDate)
+    dates: dates,
+    amounts: dates.map(date => amountByDate[date])
   }
 }
 
@@ -302,27 +311,29 @@ const getProfitTrendData = () => {
     }
   }
 
-  // 统计利润数据
-  orderStore.orders.forEach(order => {
-    if (!order.createTime) return
+  // 统计利润数据 - 确保orders存在
+  if (orderStore.orders && Array.isArray(orderStore.orders)) {
+    orderStore.orders.forEach(order => {
+      if (!order.createTime) return
 
-    const orderDate = new Date(order.createTime)
-    let dateKey
+      const orderDate = new Date(order.createTime)
+      let dateKey
 
-    if (activeTimeRange.value === 'halfYear') {
-      dateKey = formatMonth(orderDate)
-    } else {
-      dateKey = formatDate(orderDate)
-    }
+      if (activeTimeRange.value === 'halfYear') {
+        dateKey = formatMonth(orderDate)
+      } else {
+        dateKey = formatDate(orderDate)
+      }
 
-    if (profitByDate[dateKey] !== undefined) {
-      profitByDate[dateKey] += (order.profit || 0)
-    }
-  })
-  
+      if (profitByDate[dateKey] !== undefined) {
+        profitByDate[dateKey] += (order.profit || 0)
+      }
+    })
+  }
+
   return {
-    dates,
-    amounts: dates.map(date => amountByDate[date])
+    dates: Object.keys(profitByDate),
+    profits: Object.values(profitByDate)
   }
 }
 

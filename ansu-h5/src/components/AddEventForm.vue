@@ -66,10 +66,11 @@
           </t-form-item>
           
           <t-form-item label="发生时间" name="eventTime" :rules="[{ required: true, message: '请选择发生时间' }]">
-            <t-input 
-              v-model="formData.eventTime" 
-              type="datetime-local"
-              placeholder="请选择发生时间"
+            <t-input
+              v-model="formData.eventTime"
+              placeholder="请选择发生时间 (YYYY-MM-DD HH:MM)"
+              @click="showDateTimePicker"
+              readonly
             />
           </t-form-item>
           
@@ -135,6 +136,42 @@ const emit = defineEmits(['update:visible', 'submit', 'close'])
 const form = ref(null)
 const submitting = ref(false)
 
+// 显示日期时间选择器
+const showDateTimePicker = () => {
+  // 创建一个隐藏的input元素来触发日期时间选择器
+  const input = document.createElement('input')
+  input.type = 'datetime-local'
+  input.style.position = 'absolute'
+  input.style.left = '-9999px'
+
+  // 如果已有值，设置为当前值
+  if (formData.eventTime) {
+    // 将显示格式转换为datetime-local格式
+    const date = new Date(formData.eventTime.replace(' ', 'T'))
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    input.value = `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+
+  input.addEventListener('change', (e) => {
+    // 转换为显示格式
+    const date = new Date(e.target.value)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    formData.eventTime = `${year}-${month}-${day} ${hours}:${minutes}`
+    document.body.removeChild(input)
+  })
+
+  document.body.appendChild(input)
+  input.click()
+}
+
 // 表单数据
 const formData = reactive({
   orderId: '',
@@ -169,7 +206,7 @@ watch(() => props.visible, (newVal) => {
     const day = String(now.getDate()).padStart(2, '0')
     const hours = String(now.getHours()).padStart(2, '0')
     const minutes = String(now.getMinutes()).padStart(2, '0')
-    formData.eventTime = `${year}-${month}-${day}T${hours}:${minutes}`
+    formData.eventTime = `${year}-${month}-${day} ${hours}:${minutes}`
   }
 })
 

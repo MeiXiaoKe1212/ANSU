@@ -68,8 +68,9 @@
           <t-form-item label="发生日期" name="costDate" :rules="[{ required: true, message: '请选择发生日期' }]">
             <t-input
               v-model="formData.costDate"
-              type="date"
-              placeholder="请选择发生日期"
+              placeholder="请选择发生日期 (YYYY-MM-DD)"
+              @click="showDatePicker"
+              readonly
             />
           </t-form-item>
           
@@ -109,6 +110,24 @@ const emit = defineEmits(['update:visible', 'submit', 'close'])
 const form = ref(null)
 const submitting = ref(false)
 
+// 显示日期选择器
+const showDatePicker = () => {
+  // 创建一个隐藏的input元素来触发日期选择器
+  const input = document.createElement('input')
+  input.type = 'date'
+  input.style.position = 'absolute'
+  input.style.left = '-9999px'
+  input.value = formData.costDate
+
+  input.addEventListener('change', (e) => {
+    formData.costDate = e.target.value
+    document.body.removeChild(input)
+  })
+
+  document.body.appendChild(input)
+  input.click()
+}
+
 // 表单数据
 const formData = reactive({
   orderId: '',
@@ -130,7 +149,11 @@ watch(() => props.visible, (newVal) => {
     resetForm()
     formData.orderId = props.orderId
     // 设置默认日期为今天
-    formData.costDate = new Date().toISOString().split('T')[0]
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    formData.costDate = `${year}-${month}-${day}`
   }
 })
 
