@@ -12,24 +12,28 @@ export const useOrderCostStore = defineStore('orderCostStore', () => {
   // API基础URL
   const API_BASE_URL = 'http://localhost:8080/api'
   
-  // 获取订单成本列表
+  // 获取订单成本列表（不使用缓存，每次都从API获取最新数据）
   const fetchCostsByOrderId = async (orderId) => {
     loading.value = true
     try {
-      const response = await fetch(`${API_BASE_URL}/order-costs/order/${orderId}`)
+      // 添加时间戳参数防止缓存
+      const timestamp = new Date().getTime()
+      const response = await fetch(`${API_BASE_URL}/order-costs/order/${orderId}?t=${timestamp}`)
       const result = await response.json()
-      
+
       if (result.code === 200) {
-        costs.value = result.data || []
-        return result.data
+        const freshCosts = result.data || []
+        costs.value = freshCosts
+        return freshCosts
       } else {
         throw new Error(result.message || '获取成本列表失败')
       }
     } catch (error) {
       console.error('获取成本列表失败:', error)
       // 如果API不可用，使用本地模拟数据
-      costs.value = getMockCosts(orderId)
-      return costs.value
+      const mockCosts = getMockCosts(orderId)
+      costs.value = mockCosts
+      return mockCosts
     } finally {
       loading.value = false
     }

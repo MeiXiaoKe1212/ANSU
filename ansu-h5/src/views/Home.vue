@@ -41,20 +41,10 @@
         </div>
       </div>
 
-      <!-- 饼图：外派/自有比例 -->
+      <!-- 利润趋势图表 -->
       <div class="chart-card">
         <div class="card-header">
-          <h3>订单类型分布</h3>
-        </div>
-        <div class="card-body">
-          <div id="pieChart" class="chart-container"></div>
-        </div>
-      </div>
-
-      <!-- 图表选项卡 -->
-      <div class="chart-card">
-        <div class="card-header">
-          <h3>账单金额趋势</h3>
+          <h3>利润趋势</h3>
         </div>
         <div class="card-tabs">
           <t-tabs v-model="activeTimeRange">
@@ -68,12 +58,14 @@
         </div>
       </div>
 
-      <!-- 图表类型切换 -->
-      <div class="chart-type-switch">
-        <t-radio-group v-model="chartType">
-          <t-radio value="line">折线图</t-radio>
-          <t-radio value="bar">柱状图</t-radio>
-        </t-radio-group>
+      <!-- 饼图：外派/自有比例 -->
+      <div class="chart-card">
+        <div class="card-header">
+          <h3>订单类型分布</h3>
+        </div>
+        <div class="card-body">
+          <div id="pieChart" class="chart-container"></div>
+        </div>
       </div>
     </div>
 
@@ -123,7 +115,6 @@ const username = computed(() => localStorage.getItem('username') || '用户')
 
 // 图表相关
 const activeTimeRange = ref('week')
-const chartType = ref('line')
 let pieChartInstance = null
 let trendChartInstance = null
 
@@ -275,6 +266,59 @@ const getTrendData = () => {
       amountByDate[dateKey] += (order.actualPrice || order.quotedPrice || 0)
     }
   })
+
+  return {
+    dates: Object.keys(profitByDate),
+    profits: Object.values(profitByDate)
+  }
+}
+
+// 获取利润趋势数据
+const getProfitTrendData = () => {
+  const today = new Date()
+  const profitByDate = {}
+
+  // 根据时间范围生成日期
+  if (activeTimeRange.value === 'week') {
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(today.getDate() - i)
+      const dateKey = formatDate(date)
+      profitByDate[dateKey] = 0
+    }
+  } else if (activeTimeRange.value === 'month') {
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(today.getDate() - i)
+      const dateKey = formatDate(date)
+      profitByDate[dateKey] = 0
+    }
+  } else {
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(today)
+      date.setMonth(today.getMonth() - i)
+      const dateKey = formatMonth(date)
+      profitByDate[dateKey] = 0
+    }
+  }
+
+  // 统计利润数据
+  orderStore.orders.forEach(order => {
+    if (!order.createTime) return
+
+    const orderDate = new Date(order.createTime)
+    let dateKey
+
+    if (activeTimeRange.value === 'halfYear') {
+      dateKey = formatMonth(orderDate)
+    } else {
+      dateKey = formatDate(orderDate)
+    }
+
+    if (profitByDate[dateKey] !== undefined) {
+      profitByDate[dateKey] += (order.profit || 0)
+    }
+  })
   
   return {
     dates,
@@ -293,9 +337,9 @@ const initTrendChart = () => {
 // 更新趋势图
 const updateTrendChart = () => {
   if (!trendChartInstance) return
-  
-  const { dates, amounts } = getTrendData()
-  
+
+  const { dates, profits } = getProfitTrendData()
+
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -317,13 +361,13 @@ const updateTrendChart = () => {
     },
     series: [
       {
-        name: '账单金额',
-        type: chartType.value,
-        data: amounts,
+        name: '利润',
+        type: 'line',
+        data: profits,
         itemStyle: {
-          color: '#0052d9'
+          color: '#52c41a'
         },
-        areaStyle: chartType.value === 'line' ? {
+        areaStyle: {
           color: {
             type: 'linear',
             x: 0,
@@ -331,11 +375,11 @@ const updateTrendChart = () => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(0,82,217,0.5)' },
-              { offset: 1, color: 'rgba(0,82,217,0.1)' }
+              { offset: 0, color: 'rgba(82,196,26,0.5)' },
+              { offset: 1, color: 'rgba(82,196,26,0.1)' }
             ]
           }
-        } : undefined
+        }
       }
     ]
   }
@@ -353,8 +397,8 @@ const formatMonth = (date) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
-// 监听时间范围和图表类型变化
-watch([activeTimeRange, chartType], () => {
+// 监听时间范围变化
+watch(activeTimeRange, () => {
   updateTrendChart()
 })
 
@@ -504,11 +548,7 @@ onUnmounted(() => {
   width: 100%;
 }
 
-.chart-type-switch {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 16px;
-}
+
 
 .status-stats {
   background-color: #fff;

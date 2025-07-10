@@ -112,13 +112,13 @@
           <div class="cost-list">
             <div v-if="costs && costs.length > 0">
               <div class="cost-item" v-for="cost in costs" :key="cost.id">
-                <div class="cost-main">
-                  <span class="cost-name">{{ cost.costName }}</span>
-                  <span class="cost-amount">¥{{ cost.amount }}</span>
+                <div class="cost-left">
+                  <div class="cost-name">{{ cost.costName }}</div>
+                  <div class="cost-desc" v-if="cost.description">{{ cost.description }}</div>
                 </div>
-                <div class="cost-detail">
-                  <span class="cost-time">{{ formatDateTime(cost.createTime) }}</span>
-                  <span class="cost-desc" v-if="cost.description">{{ cost.description }}</span>
+                <div class="cost-right">
+                  <div class="cost-time">{{ formatDateTime(cost.createTime) }}</div>
+                  <div class="cost-amount">¥{{ cost.amount }}</div>
                   <t-button size="small" theme="danger" variant="text" @click="deleteCost(cost.id)">
                     删除
                   </t-button>
@@ -289,6 +289,14 @@
       @close="handleFormClose"
     />
 
+    <!-- 添加成本表单 -->
+    <add-cost-form
+      v-model:visible="costFormVisible"
+      :order-id="orderId"
+      @submit="handleCostSubmit"
+      @close="handleCostFormClose"
+    />
+
     <!-- 删除确认对话框 -->
     <t-dialog
       v-model="deleteConfirmVisible"
@@ -308,6 +316,7 @@ import { useOrderCostStore } from '../stores/orderCostStore'
 import { useOrderEventStore } from '../stores/orderEventStore'
 import { Toast } from 'tdesign-mobile-vue'
 import TransportOrderForm from '../components/TransportOrderForm.vue'
+import AddCostForm from '../components/AddCostForm.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -327,6 +336,7 @@ const loading = ref(true)
 // 表单控制
 const orderFormVisible = ref(false)
 const currentOrderData = ref({})
+const costFormVisible = ref(false)
 const deleteConfirmVisible = ref(false)
 
 // 获取订单详情
@@ -336,9 +346,8 @@ const fetchOrderDetail = async () => {
     const orderData = await orderStore.fetchOrderById(orderId.value)
     order.value = orderData
 
-    // 获取成本列表
-    const costData = await costStore.fetchCostsByOrderId(orderId.value)
-    costs.value = costData
+    // 获取成本列表并重新计算利润
+    await fetchCostsAndCalculateProfit()
 
     // 获取事件列表
     const eventData = await eventStore.fetchEventsByOrderId(orderId.value)
@@ -348,6 +357,38 @@ const fetchOrderDetail = async () => {
     router.replace('/list')
   } finally {
     loading.value = false
+  }
+}
+
+// 获取成本并重新计算利润
+const fetchCostsAndCalculateProfit = async () => {
+  try {
+    // 强制从API获取最新成本数据，不使用缓存
+    const costData = await costStore.fetchCostsByOrderId(orderId.value)
+    costs.value = costData
+
+    // 重新计算总成本
+    const totalCost = costs.value.reduce((sum, cost) => sum + (parseFloat(cost.amount) || 0), 0)
+
+    // 更新订单的成本和利润信息
+    if (order.value) {
+      order.value.totalCost = totalCost
+
+      // 重新计算利润
+      const actualPrice = parseFloat(order.value.actualPrice) || 0
+      const profit = actualPrice - totalCost
+      order.value.profit = profit
+
+      // 重新计算利润率
+      if (actualPrice > 0) {
+        const profitRate = (profit / actualPrice * 100).toFixed(2)
+        order.value.profitRate = parseFloat(profitRate)
+      } else {
+        order.value.profitRate = 0
+      }
+    }
+  } catch (error) {
+    console.error('获取成本数据失败:', error)
   }
 }
 
@@ -463,8 +504,24 @@ const getImpactLevelClass = (level) => {
 
 // 显示添加成本表单
 const showAddCostForm = () => {
-  // TODO: 实现添加成本表单
-  Toast({ message: '添加成本功能开发中', theme: 'warning' })
+  costFormVisible.value = true
+}
+
+// 处理成本提交
+const handleCostSubmit = async (formData) => {
+  try {
+    await costStore.addCost(formData)
+    // 重新获取成本并计算利润
+    await fetchCostsAndCalculateProfit()
+    Toast({ message: '成本添加成功', theme: 'success' })
+  } catch (error) {
+    Toast({ message: error.message || '添加失败', theme: 'error' })
+  }
+}
+
+// 处理成本表单关闭
+const handleCostFormClose = () => {
+  costFormVisible.value = false
 }
 
 // 显示添加事件表单
@@ -499,9 +556,8 @@ const deleteEvent = async (eventId) => {
 const deleteCost = async (costId) => {
   try {
     await costStore.deleteCost(costId, orderId.value)
-    costs.value = costs.value.filter(cost => cost.id !== costId)
-    // 重新获取订单信息以更新利润计算
-    await fetchOrderDetail()
+    // 重新获取成本并计算利润
+    await fetchCostsAndCalculateProfit()
     Toast({ message: '成本删除成功', theme: 'success' })
   } catch (error) {
     Toast({ message: error.message || '删除失败', theme: 'error' })
@@ -769,6 +825,9 @@ onMounted(() => {
 }
 
 .cost-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   padding: 12px 0;
   border-bottom: 1px solid #f0f0f0;
 }
@@ -777,38 +836,42 @@ onMounted(() => {
   border-bottom: none;
 }
 
-.cost-main {
+.cost-left {
+  flex: 1;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .cost-name {
   font-weight: 500;
   color: #333;
+  font-size: 14px;
+}
+
+.cost-desc {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.cost-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.cost-time {
+  font-size: 11px;
+  color: #999;
 }
 
 .cost-amount {
   font-weight: 600;
   color: #ff6b35;
-}
-
-.cost-detail {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: #666;
-}
-
-.cost-time {
-  flex: 1;
-}
-
-.cost-desc {
-  flex: 2;
-  margin: 0 8px;
+  font-size: 14px;
 }
 
 /* 事件列表 */
