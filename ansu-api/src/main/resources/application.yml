@@ -20,6 +20,12 @@ spring:
       data-locations: classpath:data.sql
       continue-on-error: true
 
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+
 # MyBatis Plus配置
 mybatis-plus:
   configuration:

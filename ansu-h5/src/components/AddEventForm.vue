@@ -186,18 +186,29 @@ const resetForm = () => {
 const handleSubmit = async ({ validateResult }) => {
   if (validateResult === true) {
     submitting.value = true
-    
+
     try {
-      // 处理时间字段，转换为ISO格式
+      // 处理时间字段，转换为后端需要的格式
       const submitData = { ...formData }
       if (submitData.eventTime) {
-        submitData.eventTime = new Date(submitData.eventTime).toISOString()
+        // 转换为 YYYY-MM-DD HH:mm:ss 格式（后端自定义反序列化器支持多种格式）
+        const date = new Date(submitData.eventTime)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        const seconds = String(date.getSeconds()).padStart(2, '0')
+        submitData.eventTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
       }
-      
+
+      console.log('提交事件数据:', submitData) // 调试日志
+
       emit('submit', submitData)
       Toast.success('事件添加成功')
       closeForm()
     } catch (error) {
+      console.error('提交事件失败:', error)
       Toast.error(error.message || '添加失败')
     } finally {
       submitting.value = false

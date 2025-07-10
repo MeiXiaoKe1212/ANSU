@@ -39,6 +39,8 @@ export const useOrderEventStore = defineStore('orderEventStore', () => {
   const addEvent = async (eventData) => {
     loading.value = true
     try {
+      console.log('发送事件数据到API:', eventData) // 调试日志
+
       const response = await fetch(`${API_BASE_URL}/order-events`, {
         method: 'POST',
         headers: {
@@ -46,9 +48,10 @@ export const useOrderEventStore = defineStore('orderEventStore', () => {
         },
         body: JSON.stringify(eventData)
       })
-      
+
       const result = await response.json()
-      
+      console.log('API响应:', result) // 调试日志
+
       if (result.code === 200) {
         events.value.unshift(result.data)
         return result.data
