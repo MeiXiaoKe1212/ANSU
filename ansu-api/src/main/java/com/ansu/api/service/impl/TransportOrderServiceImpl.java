@@ -255,13 +255,12 @@ public class TransportOrderServiceImpl extends ServiceImpl<TransportOrderMapper,
     }
 
     /**
-     * 生成订单编号
+     * 生成订单编号 - 格式：TD{yyyyMMdd}{HHMMSS} (16位)
      */
     private String generateOrderNo() {
-        String prefix = "TO";
+        String prefix = "TD";
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        String random = String.valueOf((int) (Math.random() * 1000));
-        return prefix + timestamp + String.format("%03d", Integer.parseInt(random));
+        return prefix + timestamp; // TD + 14位时间戳 = 16位
     }
 
     /**

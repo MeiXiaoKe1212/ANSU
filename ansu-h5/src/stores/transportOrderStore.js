@@ -17,6 +17,31 @@ export const useTransportOrderStore = defineStore('transportOrderStore', () => {
     return Date.now().toString(36) + Math.random().toString(36).substring(2, 9)
   }
   
+  // 获取单个订单详情
+  const fetchOrderById = async (id) => {
+    loading.value = true
+    try {
+      const response = await fetch(`${API_BASE_URL}/transport-orders/${id}`)
+      const result = await response.json()
+
+      if (result.code === 200) {
+        return result.data
+      } else {
+        throw new Error(result.message || '获取订单详情失败')
+      }
+    } catch (error) {
+      console.error('获取订单详情失败:', error)
+      // 如果API不可用，从本地查找
+      const localOrder = orders.value.find(order => order.id == id)
+      if (localOrder) {
+        return localOrder
+      }
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
   // 获取订单列表
   const fetchOrders = async (params = {}) => {
     loading.value = true
@@ -236,12 +261,11 @@ export const useTransportOrderStore = defineStore('transportOrderStore', () => {
     }
   }
   
-  // 生成订单编号
+  // 生成订单编号 - 格式：TD{yyyyMMdd}{HHMMSS} (16位)
   const generateOrderNo = () => {
-    const prefix = 'TO'
+    const prefix = 'TD'
     const timestamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14)
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-    return `${prefix}${timestamp}${random}`
+    return `${prefix}${timestamp}` // TD + 14位时间戳 = 16位
   }
   
   // 本地统计计算
@@ -298,6 +322,7 @@ export const useTransportOrderStore = defineStore('transportOrderStore', () => {
     orders,
     loading,
     fetchOrders,
+    fetchOrderById,
     createOrder,
     updateOrder,
     updateTransportStatus,

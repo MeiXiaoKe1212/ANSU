@@ -107,10 +107,10 @@
             <div class="item-time">{{ formatDate(order.createTime) }}</div>
             <div class="status-badges">
               <span class="status-badge transport" :class="getTransportStatusClass(order.transportStatus)">
-                {{ getTransportStatusText(order.transportStatus) }}
+                运输: {{ getTransportStatusText(order.transportStatus) }}
               </span>
               <span class="status-badge payment" :class="getPaymentStatusClass(order.paymentStatus)">
-                {{ getPaymentStatusText(order.paymentStatus) }}
+                款项: {{ getPaymentStatusText(order.paymentStatus) }}
               </span>
             </div>
             <div class="item-status">
