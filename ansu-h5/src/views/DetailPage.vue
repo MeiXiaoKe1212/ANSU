@@ -297,6 +297,14 @@
       @close="handleCostFormClose"
     />
 
+    <!-- 添加事件表单 -->
+    <add-event-form
+      v-model:visible="eventFormVisible"
+      :order-id="orderId"
+      @submit="handleEventSubmit"
+      @close="handleEventFormClose"
+    />
+
     <!-- 删除确认对话框 -->
     <t-dialog
       v-model="deleteConfirmVisible"
@@ -317,6 +325,7 @@ import { useOrderEventStore } from '../stores/orderEventStore'
 import { Toast } from 'tdesign-mobile-vue'
 import TransportOrderForm from '../components/TransportOrderForm.vue'
 import AddCostForm from '../components/AddCostForm.vue'
+import AddEventForm from '../components/AddEventForm.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -337,6 +346,7 @@ const loading = ref(true)
 const orderFormVisible = ref(false)
 const currentOrderData = ref({})
 const costFormVisible = ref(false)
+const eventFormVisible = ref(false)
 const deleteConfirmVisible = ref(false)
 
 // 获取订单详情
@@ -526,8 +536,25 @@ const handleCostFormClose = () => {
 
 // 显示添加事件表单
 const showAddEventForm = () => {
-  // TODO: 实现添加事件表单
-  Toast({ message: '添加事件功能开发中', theme: 'warning' })
+  eventFormVisible.value = true
+}
+
+// 处理事件提交
+const handleEventSubmit = async (formData) => {
+  try {
+    await eventStore.addEvent(formData)
+    // 重新获取事件列表
+    const eventData = await eventStore.fetchEventsByOrderId(orderId.value)
+    events.value = eventData
+    Toast({ message: '事件添加成功', theme: 'success' })
+  } catch (error) {
+    Toast({ message: error.message || '添加失败', theme: 'error' })
+  }
+}
+
+// 处理事件表单关闭
+const handleEventFormClose = () => {
+  eventFormVisible.value = false
 }
 
 // 解决事件

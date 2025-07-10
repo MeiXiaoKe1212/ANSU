@@ -437,7 +437,14 @@ const handleFormClose = () => {
 }
 
 // 组件挂载后初始化图表
-onMounted(() => {
+onMounted(async () => {
+  // 先获取最新的订单数据
+  try {
+    await orderStore.fetchOrders({ size: 100 })
+  } catch (error) {
+    console.error('获取订单数据失败:', error)
+  }
+
   // 使用nextTick确保DOM已经渲染完成
   nextTick(() => {
     initPieChart()

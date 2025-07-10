@@ -272,7 +272,8 @@ const handleFormClose = () => {
 
 // 组件挂载时获取订单列表
 onMounted(() => {
-  orderStore.fetchOrders().catch(error => {
+  // 强制刷新订单列表
+  orderStore.fetchOrders({ size: 100 }).catch(error => {
     console.error('获取订单列表失败:', error)
   })
 })
