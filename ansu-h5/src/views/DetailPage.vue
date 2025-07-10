@@ -4,228 +4,202 @@
 
     <div class="detail-container" v-if="!loading">
       <template v-if="order">
-        <!-- 订单标题卡片 -->
-        <div class="detail-card order-header-card">
-          <h2 class="detail-title">{{ order.orderNo }}</h2>
-          <div class="detail-subtitle">{{ order.customerCompanyName }}</div>
-          <div class="detail-header">
-            <div class="status-badges">
-              <span class="status-badge transport" :class="getTransportStatusClass(order.transportStatus)">
-                运输: {{ getTransportStatusText(order.transportStatus) }}
-              </span>
-              <span class="status-badge payment" :class="getPaymentStatusClass(order.paymentStatus)">
-                款项: {{ getPaymentStatusText(order.paymentStatus) }}
-              </span>
-            </div>
+        <!-- 订单头部信息 -->
+        <div class="order-header">
+          <div class="order-title">
+            <h2>{{ order.orderNo }}</h2>
             <span class="order-date">{{ formatDate(order.createTime) }}</span>
           </div>
-        </div>
-
-        <!-- 客户信息卡片 -->
-        <div class="detail-card">
-          <div class="card-title">
-            <t-icon name="user" size="20px" />
-            <span>客户信息</span>
-          </div>
-          <div class="detail-section">
-            <div class="detail-item">
-              <div class="item-label">企业名称</div>
-              <div class="item-value">{{ order.customerCompanyName }}</div>
-            </div>
-            <div class="detail-item">
-              <div class="item-label">联系人</div>
-              <div class="item-value">{{ order.customerContactPerson }}</div>
-            </div>
-            <div class="detail-item">
-              <div class="item-label">联系电话</div>
-              <div class="item-value">{{ order.customerContactPhone }}</div>
-            </div>
+          <div class="order-customer">{{ order.customerCompanyName }}</div>
+          <div class="status-row">
+            <span class="status-badge transport" :class="getTransportStatusClass(order.transportStatus)">
+              运输: {{ getTransportStatusText(order.transportStatus) }}
+            </span>
+            <span class="status-badge payment" :class="getPaymentStatusClass(order.paymentStatus)">
+              款项: {{ getPaymentStatusText(order.paymentStatus) }}
+            </span>
           </div>
         </div>
 
-        <!-- 运输信息卡片 -->
-        <div class="detail-card">
-          <div class="card-title">
-            <t-icon name="swap" size="20px" />
-            <span>运输信息</span>
-          </div>
-          <div class="detail-section">
-            <div class="detail-item">
-              <div class="item-label">起点</div>
-              <div class="item-value">{{ order.startAddress }}</div>
+        <!-- 基本信息区域 -->
+        <div class="info-section">
+          <h3 class="section-title">基本信息</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="label">联系人:</span>
+              <span class="value">{{ order.customerContactPerson }}</span>
             </div>
-            <div class="detail-item">
-              <div class="item-label">终点</div>
-              <div class="item-value">{{ order.endAddress }}</div>
+            <div class="info-item">
+              <span class="label">电话:</span>
+              <span class="value">{{ order.customerContactPhone }}</span>
             </div>
-            <div class="detail-item">
-              <div class="item-label">货物名称</div>
-              <div class="item-value">{{ order.cargoName }}</div>
+            <div class="info-item full-width">
+              <span class="label">起点:</span>
+              <span class="value">{{ order.startAddress }}</span>
             </div>
-            <div class="detail-item" v-if="order.cargoWeight">
-              <div class="item-label">货物重量</div>
-              <div class="item-value">{{ order.cargoWeight }}吨</div>
+            <div class="info-item full-width">
+              <span class="label">终点:</span>
+              <span class="value">{{ order.endAddress }}</span>
             </div>
-            <div class="detail-item" v-if="order.cargoVolume">
-              <div class="item-label">货物体积</div>
-              <div class="item-value">{{ order.cargoVolume }}m³</div>
+            <div class="info-item">
+              <span class="label">货物:</span>
+              <span class="value">{{ order.cargoName }}</span>
             </div>
+            <div class="info-item">
+              <span class="label">重量:</span>
+              <span class="value">{{ order.cargoWeight || '-' }}吨</span>
+            </div>
+
+            <!-- 车辆信息（仅自有车辆） -->
+            <template v-if="!order.isOutsourced">
+              <div class="info-item">
+                <span class="label">车牌:</span>
+                <span class="value">{{ order.licensePlate || '-' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">司机:</span>
+                <span class="value">{{ order.driverName || '-' }}</span>
+              </div>
+            </template>
+
+            <!-- 外包信息 -->
+            <template v-if="order.isOutsourced">
+              <div class="info-item">
+                <span class="label">平台:</span>
+                <span class="value">{{ order.thirdPartyPlatform || '-' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">外包单号:</span>
+                <span class="value">{{ order.thirdPartyOrderId || '-' }}</span>
+              </div>
+            </template>
           </div>
         </div>
 
-        <!-- 车辆信息卡片 -->
-        <div class="detail-card" v-if="!order.isOutsourced">
-          <div class="card-title">
-            <t-icon name="car" size="20px" />
-            <span>车辆信息</span>
-          </div>
-          <div class="detail-section">
-            <div class="detail-item" v-if="order.licensePlate">
-              <div class="item-label">车牌号</div>
-              <div class="item-value">{{ order.licensePlate }}</div>
+        <!-- 价格信息区域 -->
+        <div class="info-section">
+          <h3 class="section-title">价格信息</h3>
+          <div class="price-grid">
+            <div class="price-item">
+              <span class="label">报价:</span>
+              <span class="value price">¥{{ order.quotedPrice || 0 }}</span>
             </div>
-            <div class="detail-item" v-if="order.vehicleType">
-              <div class="item-label">车辆类型</div>
-              <div class="item-value">{{ order.vehicleType }}</div>
+            <div class="price-item">
+              <span class="label">实收:</span>
+              <span class="value price">¥{{ order.actualPrice || 0 }}</span>
             </div>
-            <div class="detail-item" v-if="order.vehicleSpec">
-              <div class="item-label">车辆规格</div>
-              <div class="item-value">{{ order.vehicleSpec }}</div>
+            <div class="price-item">
+              <span class="label">成本:</span>
+              <span class="value cost">¥{{ order.totalCost || 0 }}</span>
             </div>
-          </div>
-        </div>
-
-        <!-- 司机信息卡片 -->
-        <div class="detail-card" v-if="!order.isOutsourced && (order.driverName || order.driverPhone)">
-          <div class="card-title">
-            <t-icon name="user-circle" size="20px" />
-            <span>司机信息</span>
-          </div>
-          <div class="detail-section">
-            <div class="detail-item" v-if="order.driverName">
-              <div class="item-label">司机姓名</div>
-              <div class="item-value">{{ order.driverName }}</div>
-            </div>
-            <div class="detail-item" v-if="order.driverPhone">
-              <div class="item-label">联系电话</div>
-              <div class="item-value">{{ order.driverPhone }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 外包信息卡片 -->
-        <div class="detail-card" v-if="order.isOutsourced">
-          <div class="card-title">
-            <t-icon name="share" size="20px" />
-            <span>外包信息</span>
-          </div>
-          <div class="detail-section">
-            <div class="detail-item" v-if="order.thirdPartyPlatform">
-              <div class="item-label">第三方平台</div>
-              <div class="item-value">{{ order.thirdPartyPlatform }}</div>
-            </div>
-            <div class="detail-item" v-if="order.thirdPartyOrderId">
-              <div class="item-label">第三方订单号</div>
-              <div class="item-value">{{ order.thirdPartyOrderId }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 价格信息卡片 -->
-        <div class="detail-card">
-          <div class="card-title">
-            <t-icon name="money-circle" size="20px" />
-            <span>价格信息</span>
-          </div>
-          <div class="detail-section">
-            <div class="detail-item" v-if="order.quotedPrice">
-              <div class="item-label">报价金额</div>
-              <div class="item-value price">¥{{ order.quotedPrice }}</div>
-            </div>
-            <div class="detail-item" v-if="order.actualPrice">
-              <div class="item-label">实际收款</div>
-              <div class="item-value price">¥{{ order.actualPrice }}</div>
-            </div>
-            <div class="detail-item">
-              <div class="item-label">总成本</div>
-              <div class="item-value cost">¥{{ order.totalCost || 0 }}</div>
-            </div>
-            <div class="detail-item">
-              <div class="item-label">利润</div>
-              <div class="item-value" :class="{ 'profit': (order.profit || 0) > 0, 'loss': (order.profit || 0) < 0 }">
+            <div class="price-item">
+              <span class="label">利润:</span>
+              <span class="value" :class="{ 'profit': (order.profit || 0) > 0, 'loss': (order.profit || 0) < 0 }">
                 ¥{{ order.profit || 0 }}
-              </div>
-            </div>
-            <div class="detail-item" v-if="order.profitRate">
-              <div class="item-label">利润率</div>
-              <div class="item-value" :class="{ 'profit': order.profitRate > 0, 'loss': order.profitRate < 0 }">
-                {{ order.profitRate }}%
-              </div>
+              </span>
             </div>
           </div>
         </div>
 
-        <!-- 成本明细卡片 -->
-        <div class="detail-card">
-          <div class="card-title">
-            <t-icon name="chart-pie" size="20px" />
-            <span>成本明细</span>
+        <!-- 成本明细区域 -->
+        <div class="info-section">
+          <div class="section-header">
+            <h3 class="section-title">成本明细</h3>
             <t-button size="small" theme="primary" variant="text" @click="showAddCostForm">
               添加成本
             </t-button>
           </div>
-          <div class="detail-section costs">
+          <div class="cost-list">
             <div v-if="costs && costs.length > 0">
               <div class="cost-item" v-for="cost in costs" :key="cost.id">
-                <div class="cost-info">
+                <div class="cost-main">
                   <span class="cost-name">{{ cost.costName }}</span>
-                  <span class="cost-date">{{ formatDate(cost.costDate) }}</span>
-                  <span class="cost-desc" v-if="cost.description">{{ cost.description }}</span>
+                  <span class="cost-amount">¥{{ cost.amount }}</span>
                 </div>
-                <div class="cost-actions">
-                  <span class="cost-value">¥{{ cost.amount }}</span>
+                <div class="cost-detail">
+                  <span class="cost-time">{{ formatDateTime(cost.createTime) }}</span>
+                  <span class="cost-desc" v-if="cost.description">{{ cost.description }}</span>
                   <t-button size="small" theme="danger" variant="text" @click="deleteCost(cost.id)">
                     删除
                   </t-button>
                 </div>
               </div>
             </div>
-            <div v-else class="empty-costs">
+            <div v-else class="empty-state">
               暂无成本记录
             </div>
           </div>
         </div>
 
-        <!-- 时间信息卡片 -->
-        <div class="detail-card" v-if="order.departureTime || order.arrivalTime">
-          <div class="card-title">
-            <t-icon name="time" size="20px" />
-            <span>时间信息</span>
+        <!-- 运输事件区域 -->
+        <div class="info-section">
+          <div class="section-header">
+            <h3 class="section-title">运输事件</h3>
+            <t-button size="small" theme="primary" variant="text" @click="showAddEventForm">
+              添加事件
+            </t-button>
           </div>
-          <div class="detail-section">
-            <div class="detail-item" v-if="order.departureTime">
-              <div class="item-label">出发时间</div>
-              <div class="item-value">{{ formatDateTime(order.departureTime) }}</div>
+          <div class="event-list">
+            <div v-if="events && events.length > 0">
+              <div class="event-item" v-for="event in events" :key="event.id">
+                <div class="event-header">
+                  <span class="event-title">{{ event.eventTitle }}</span>
+                  <span class="event-type">{{ getEventTypeName(event.eventType) }}</span>
+                  <span class="impact-badge" :class="getImpactLevelClass(event.impactLevel)">
+                    {{ getImpactLevelName(event.impactLevel) }}
+                  </span>
+                </div>
+                <div class="event-detail">
+                  <div class="event-time">{{ formatDateTime(event.eventTime) }}</div>
+                  <div class="event-location" v-if="event.location">📍 {{ event.location }}</div>
+                  <div class="event-desc" v-if="event.eventDescription">{{ event.eventDescription }}</div>
+
+                  <!-- 已解决的事件 -->
+                  <div v-if="event.isResolved" class="event-resolution">
+                    <div class="resolution-time">✅ {{ formatDateTime(event.resolutionTime) }} 已解决</div>
+                    <div class="resolution-desc" v-if="event.resolutionDescription">{{ event.resolutionDescription }}</div>
+                  </div>
+
+                  <!-- 未解决的事件操作 -->
+                  <div v-else class="event-actions">
+                    <t-button size="small" theme="success" variant="text" @click="resolveEvent(event.id)">
+                      标记解决
+                    </t-button>
+                    <t-button size="small" theme="danger" variant="text" @click="deleteEvent(event.id)">
+                      删除
+                    </t-button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="detail-item" v-if="order.arrivalTime">
-              <div class="item-label">到达时间</div>
-              <div class="item-value">{{ formatDateTime(order.arrivalTime) }}</div>
+            <div v-else class="empty-state">
+              暂无运输事件
             </div>
           </div>
         </div>
 
-        <!-- 备注卡片 -->
-        <div class="detail-card" v-if="order.remarks">
-          <div class="card-title">
-            <t-icon name="chat" size="20px" />
-            <span>备注</span>
-          </div>
-          <div class="detail-section">
-            <div class="remarks">{{ order.remarks }}</div>
+        <!-- 备注信息 -->
+        <div class="info-section" v-if="order.remarks">
+          <h3 class="section-title">备注信息</h3>
+          <div class="remarks-content">{{ order.remarks }}</div>
+        </div>
+
+        <!-- 时间信息 -->
+        <div class="info-section" v-if="order.departureTime || order.arrivalTime">
+          <h3 class="section-title">时间信息</h3>
+          <div class="time-grid">
+            <div class="time-item" v-if="order.departureTime">
+              <span class="label">出发:</span>
+              <span class="value">{{ formatDateTime(order.departureTime) }}</span>
+            </div>
+            <div class="time-item" v-if="order.arrivalTime">
+              <span class="label">到达:</span>
+              <span class="value">{{ formatDateTime(order.arrivalTime) }}</span>
+            </div>
           </div>
         </div>
 
-        <!-- 状态操作按钮 -->
+        <!-- 状态操作区域 -->
         <div class="status-actions">
           <div class="action-group">
             <h4>运输状态</h4>
@@ -331,6 +305,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTransportOrderStore } from '../stores/transportOrderStore'
 import { useOrderCostStore } from '../stores/orderCostStore'
+import { useOrderEventStore } from '../stores/orderEventStore'
 import { Toast } from 'tdesign-mobile-vue'
 import TransportOrderForm from '../components/TransportOrderForm.vue'
 
@@ -338,6 +313,7 @@ const router = useRouter()
 const route = useRoute()
 const orderStore = useTransportOrderStore()
 const costStore = useOrderCostStore()
+const eventStore = useOrderEventStore()
 
 // 订单ID
 const orderId = computed(() => route.params.id)
@@ -345,6 +321,7 @@ const orderId = computed(() => route.params.id)
 // 响应式数据
 const order = ref(null)
 const costs = ref([])
+const events = ref([])
 const loading = ref(true)
 
 // 表单控制
@@ -362,6 +339,10 @@ const fetchOrderDetail = async () => {
     // 获取成本列表
     const costData = await costStore.fetchCostsByOrderId(orderId.value)
     costs.value = costData
+
+    // 获取事件列表
+    const eventData = await eventStore.fetchEventsByOrderId(orderId.value)
+    events.value = eventData
   } catch (error) {
     Toast({ message: error.message || '获取订单详情失败', theme: 'error' })
     router.replace('/list')
@@ -436,29 +417,82 @@ const handleBack = () => {
 // 更新运输状态
 const updateTransportStatus = async (status) => {
   try {
-    await orderStore.updateTransportStatus(orderId.value, status, '手动更新状态')
-    order.value.transportStatus = status
-    Toast({ message: '状态更新成功', theme: 'success' })
+    const success = await orderStore.updateTransportStatus(orderId.value, status, '手动更新状态')
+    if (success) {
+      order.value.transportStatus = status
+      Toast({ message: '运输状态更新成功', theme: 'success' })
+    } else {
+      Toast({ message: '运输状态更新失败', theme: 'error' })
+    }
   } catch (error) {
-    Toast({ message: error.message || '状态更新失败', theme: 'error' })
+    console.error('更新运输状态失败:', error)
+    Toast({ message: error.message || '运输状态更新失败', theme: 'error' })
   }
 }
 
 // 更新款项状态
 const updatePaymentStatus = async (status) => {
   try {
-    await orderStore.updatePaymentStatus(orderId.value, status, '手动更新状态')
-    order.value.paymentStatus = status
-    Toast({ message: '状态更新成功', theme: 'success' })
+    const success = await orderStore.updatePaymentStatus(orderId.value, status, '手动更新状态')
+    if (success) {
+      order.value.paymentStatus = status
+      Toast({ message: '款项状态更新成功', theme: 'success' })
+    } else {
+      Toast({ message: '款项状态更新失败', theme: 'error' })
+    }
   } catch (error) {
-    Toast({ message: error.message || '状态更新失败', theme: 'error' })
+    console.error('更新款项状态失败:', error)
+    Toast({ message: error.message || '款项状态更新失败', theme: 'error' })
   }
+}
+
+// 获取事件类型名称
+const getEventTypeName = (type) => {
+  return eventStore.getEventTypeName(type)
+}
+
+// 获取影响程度名称
+const getImpactLevelName = (level) => {
+  return eventStore.getImpactLevelName(level)
+}
+
+// 获取影响程度样式
+const getImpactLevelClass = (level) => {
+  return eventStore.getImpactLevelClass(level)
 }
 
 // 显示添加成本表单
 const showAddCostForm = () => {
   // TODO: 实现添加成本表单
   Toast({ message: '添加成本功能开发中', theme: 'warning' })
+}
+
+// 显示添加事件表单
+const showAddEventForm = () => {
+  // TODO: 实现添加事件表单
+  Toast({ message: '添加事件功能开发中', theme: 'warning' })
+}
+
+// 解决事件
+const resolveEvent = async (eventId) => {
+  // 简化版本，直接标记为已解决
+  try {
+    await eventStore.resolveEvent(eventId, '问题已解决')
+    Toast({ message: '事件已标记为解决', theme: 'success' })
+  } catch (error) {
+    Toast({ message: error.message || '操作失败', theme: 'error' })
+  }
+}
+
+// 删除事件
+const deleteEvent = async (eventId) => {
+  try {
+    await eventStore.deleteEvent(eventId)
+    events.value = events.value.filter(event => event.id !== eventId)
+    Toast({ message: '事件删除成功', theme: 'success' })
+  } catch (error) {
+    Toast({ message: error.message || '删除失败', theme: 'error' })
+  }
 }
 
 // 删除成本
@@ -530,67 +564,146 @@ onMounted(() => {
 }
 
 .detail-container {
-  padding: 15px;
-  padding-bottom: 30px;
+  padding: 12px;
+  padding-bottom: 100px;
   padding-top: 56px; /* 为固定导航栏留出空间 */
 }
 
-.detail-card {
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.order-header-card {
+/* 订单头部 */
+.order-header {
   background: linear-gradient(135deg, #0052d9, #1890ff);
   color: white;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
 }
 
-.order-header-card .detail-title {
-  color: white;
-  font-size: 20px;
-  margin-top: 0;
+.order-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 8px;
+}
+
+.order-title h2 {
+  margin: 0;
+  font-size: 18px;
   font-weight: 600;
 }
 
-.order-header-card .detail-subtitle {
-  color: rgba(255, 255, 255, 0.9);
+.order-date {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.order-customer {
   font-size: 16px;
+  margin-bottom: 12px;
+  opacity: 0.9;
+}
+
+.status-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 信息区域 */
+.info-section {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 16px;
   margin-bottom: 12px;
 }
 
-.order-header-card .order-date {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 14px;
-}
-
-.order-header-card .status-badges {
-  margin-bottom: 8px;
-}
-
-.order-header-card .status-badge {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.card-title {
-  display: flex;
-  align-items: center;
+.section-title {
+  margin: 0 0 12px 0;
   font-size: 16px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 16px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
+  border-left: 3px solid #0052d9;
+  padding-left: 8px;
 }
 
-.card-title span {
-  margin-left: 8px;
-  flex: 1;
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-header .section-title {
+  margin: 0;
+}
+
+/* 信息网格 */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.info-item .label {
+  font-size: 12px;
+  color: #666;
+}
+
+.info-item .value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+/* 价格网格 */
+.price-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.price-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+}
+
+.price-item .label {
+  font-size: 12px;
+  color: #666;
+}
+
+.price-item .value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.price-item .value.price {
+  color: #0052d9;
+}
+
+.price-item .value.cost {
+  color: #ff6b35;
+}
+
+.price-item .value.profit {
+  color: #52c41a;
+}
+
+.price-item .value.loss {
+  color: #ff4d4f;
 }
 
 .status-badges {
@@ -649,86 +762,197 @@ onMounted(() => {
   color: #2e7d32;
 }
 
-.detail-title {
-  font-size: 20px;
-  margin-top: 0;
-  margin-bottom: 10px;
-  color: #333;
+/* 成本列表 */
+.cost-list {
+  max-height: 300px;
+  overflow-y: auto;
 }
 
-.detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
+.cost-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.bill-status {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  background-color: rgba(255, 255, 255, 0.25);
-  color: white;
-}
-
-.bill-status.outsourced {
-  background-color: rgba(255, 255, 255, 0.25);
-}
-
-.bill-date {
-  font-size: 14px;
-  color: #666;
-}
-
-.detail-section {
-  margin: 0;
-}
-
-.detail-item {
-  margin-bottom: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px dashed #f0f0f0;
-  padding-bottom: 8px;
-}
-
-.detail-item:last-child {
-  margin-bottom: 0;
+.cost-item:last-child {
   border-bottom: none;
 }
 
-.item-label {
-  font-size: 14px;
+.cost-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.cost-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.cost-amount {
+  font-weight: 600;
+  color: #ff6b35;
+}
+
+.cost-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
   color: #666;
 }
 
-.item-value {
-  font-size: 16px;
+.cost-time {
+  flex: 1;
+}
+
+.cost-desc {
+  flex: 2;
+  margin: 0 8px;
+}
+
+/* 事件列表 */
+.event-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.event-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.event-item:last-child {
+  border-bottom: none;
+}
+
+.event-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.event-title {
+  font-weight: 500;
+  color: #333;
+}
+
+.event-type {
+  font-size: 12px;
+  color: #666;
+  background-color: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.impact-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.impact-low {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+}
+
+.impact-medium {
+  background-color: #fff3e0;
+  color: #ef6c00;
+}
+
+.impact-high {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.event-detail {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.event-time {
+  margin-bottom: 4px;
+}
+
+.event-location {
+  margin-bottom: 4px;
+  color: #0052d9;
+}
+
+.event-desc {
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.event-resolution {
+  background-color: #f0f9ff;
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.resolution-time {
+  color: #2e7d32;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.resolution-desc {
+  color: #666;
+}
+
+.event-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* 备注内容 */
+.remarks-content {
+  background-color: #f8f9fa;
+  padding: 12px;
+  border-radius: 6px;
+  color: #333;
+  line-height: 1.5;
+}
+
+/* 时间网格 */
+.time-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.time-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+}
+
+.time-item .label {
+  font-size: 12px;
+  color: #666;
+}
+
+.time-item .value {
+  font-size: 14px;
   color: #333;
   font-weight: 500;
 }
 
-.item-value.price {
-  color: #0052d9;
-  font-weight: 600;
-}
-
-.item-value.cost {
-  color: #ff6b35;
-  font-weight: 600;
-}
-
-.item-value.profit {
-  color: #52c41a;
-  font-weight: 600;
-}
-
-.item-value.loss {
-  color: #ff4d4f;
-  font-weight: 600;
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+  font-size: 14px;
 }
 
 .costs .cost-item {

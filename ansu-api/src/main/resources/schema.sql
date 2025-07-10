@@ -141,11 +141,35 @@ CREATE TABLE IF NOT EXISTS `order_status_log` (
   `operator_id` bigint NOT NULL COMMENT '操作人ID',
   `operator_name` varchar(50) NOT NULL COMMENT '操作人姓名',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   KEY `idx_order_id` (`order_id`),
   KEY `idx_status_type` (`status_type`),
   KEY `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单状态日志表';
+
+-- 订单事件表
+CREATE TABLE IF NOT EXISTS `order_event` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '事件ID',
+  `order_id` bigint NOT NULL COMMENT '订单ID',
+  `event_type` varchar(50) NOT NULL COMMENT '事件类型：DRIVER_REST-司机休息，ACCIDENT-交通事故，BREAKDOWN-车辆故障，DELAY-延误，WEATHER-天气影响，OTHER-其他',
+  `event_title` varchar(100) NOT NULL COMMENT '事件标题',
+  `event_description` text COMMENT '事件描述',
+  `event_time` datetime NOT NULL COMMENT '事件发生时间',
+  `location` varchar(200) DEFAULT NULL COMMENT '事件发生地点',
+  `impact_level` varchar(20) DEFAULT 'LOW' COMMENT '影响程度：LOW-轻微，MEDIUM-中等，HIGH-严重',
+  `is_resolved` tinyint DEFAULT 0 COMMENT '是否已解决：0-未解决，1-已解决',
+  `resolution_time` datetime DEFAULT NULL COMMENT '解决时间',
+  `resolution_description` text COMMENT '解决方案描述',
+  `create_user_id` bigint NOT NULL COMMENT '创建人ID',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_order_id` (`order_id`),
+  KEY `idx_event_type` (`event_type`),
+  KEY `idx_event_time` (`event_time`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单事件表';
 
 -- 插入默认用户数据
 INSERT INTO `sys_user` (`username`, `password`, `real_name`, `phone`, `status`) VALUES
