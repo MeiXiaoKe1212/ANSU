@@ -170,6 +170,13 @@
                   <div class="resolution-desc" v-if="event.resolutionDescription">{{ event.resolutionDescription }}</div>
                 </div>
 
+                <!-- 已解决事件的操作 -->
+                <div v-if="event.isResolved" class="event-actions">
+                  <t-button size="small" theme="primary" variant="text" class="delete-btn" @click="deleteEvent(event.id)">
+                    删除
+                  </t-button>
+                </div>
+
                 <!-- 未解决的事件操作 -->
                 <div v-else class="event-actions">
                   <t-button size="small" theme="primary" variant="text" class="resolve-btn" @click="resolveEvent(event.id)">
@@ -314,13 +321,31 @@
       @close="handleEventFormClose"
     />
 
-    <!-- 删除确认对话框 -->
+    <!-- 删除订单确认对话框 -->
     <t-dialog
       v-model="deleteConfirmVisible"
-      title="确认删除"
-      content="确定要删除此订单吗？此操作不可撤销。"
+      title="确认删除订单"
+      content="确定要删除此订单吗？此操作不可撤销，订单相关的所有成本和事件记录也将被删除。"
       :confirm-btn="{ content: '删除', theme: 'danger' }"
       @confirm="confirmDelete"
+    />
+
+    <!-- 删除事件确认对话框 -->
+    <t-dialog
+      v-model="deleteEventConfirmVisible"
+      title="确认删除事件"
+      :content="`确定要删除事件「${currentDeleteEvent?.eventTitle}」吗？此操作不可撤销。`"
+      :confirm-btn="{ content: '删除', theme: 'danger' }"
+      @confirm="confirmDeleteEvent"
+    />
+
+    <!-- 删除成本确认对话框 -->
+    <t-dialog
+      v-model="deleteCostConfirmVisible"
+      title="确认删除成本"
+      :content="`确定要删除成本「${currentDeleteCost?.costName}」吗？此操作不可撤销。`"
+      :confirm-btn="{ content: '删除', theme: 'danger' }"
+      @confirm="confirmDeleteCost"
     />
   </div>
 </template>
@@ -357,6 +382,10 @@ const currentOrderData = ref({})
 const costFormVisible = ref(false)
 const eventFormVisible = ref(false)
 const deleteConfirmVisible = ref(false)
+const deleteEventConfirmVisible = ref(false)
+const deleteCostConfirmVisible = ref(false)
+const currentDeleteEvent = ref(null)
+const currentDeleteCost = ref(null)
 
 // 获取订单详情
 const fetchOrderDetail = async () => {
@@ -577,23 +606,43 @@ const resolveEvent = async (eventId) => {
 }
 
 // 删除事件
-const deleteEvent = async (eventId) => {
+const deleteEvent = (eventId) => {
+  const event = events.value.find(e => e.id === eventId)
+  if (event) {
+    currentDeleteEvent.value = event
+    deleteEventConfirmVisible.value = true
+  }
+}
+
+// 确认删除事件
+const confirmDeleteEvent = async () => {
   try {
-    await eventStore.deleteEvent(eventId)
-    events.value = events.value.filter(event => event.id !== eventId)
+    await eventStore.deleteEvent(currentDeleteEvent.value.id)
+    events.value = events.value.filter(event => event.id !== currentDeleteEvent.value.id)
     Toast({ message: '事件删除成功', theme: 'success' })
+    currentDeleteEvent.value = null
   } catch (error) {
     Toast({ message: error.message || '删除失败', theme: 'error' })
   }
 }
 
 // 删除成本
-const deleteCost = async (costId) => {
+const deleteCost = (costId) => {
+  const cost = costs.value.find(c => c.id === costId)
+  if (cost) {
+    currentDeleteCost.value = cost
+    deleteCostConfirmVisible.value = true
+  }
+}
+
+// 确认删除成本
+const confirmDeleteCost = async () => {
   try {
-    await costStore.deleteCost(costId, orderId.value)
+    await costStore.deleteCost(currentDeleteCost.value.id, orderId.value)
     // 重新获取成本并计算利润
     await fetchCostsAndCalculateProfit()
     Toast({ message: '成本删除成功', theme: 'success' })
+    currentDeleteCost.value = null
   } catch (error) {
     Toast({ message: error.message || '删除失败', theme: 'error' })
   }
