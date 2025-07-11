@@ -25,7 +25,18 @@
           ref="passwordInput"
         />
       </div>
-      
+
+      <div class="remember-me">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            v-model="rememberMe"
+          />
+          <span class="checkmark"></span>
+          记住我
+        </label>
+      </div>
+
       <button
         class="login-button"
         :class="{ loading: isLoading }"
@@ -34,6 +45,10 @@
       >
         {{ isLoading ? '登录中...' : '登录' }}
       </button>
+
+      <div class="forgot-password-link">
+        <a href="#" @click.prevent="goToForgotPassword">忘记密码？</a>
+      </div>
 
       <div class="register-link">
         <span>还没有账号？</span>
@@ -54,8 +69,23 @@ const userStore = useUserStore()
 
 const username = ref('')
 const password = ref('')
+const rememberMe = ref(false)
 const isLoading = ref(false)
 const passwordInput = ref(null)
+
+// 页面加载时检查是否有保存的登录信息
+const loadSavedCredentials = () => {
+  const savedUsername = localStorage.getItem('savedUsername')
+  const savedRememberMe = localStorage.getItem('rememberMe') === 'true'
+
+  if (savedUsername && savedRememberMe) {
+    username.value = savedUsername
+    rememberMe.value = true
+  }
+}
+
+// 页面加载时调用
+loadSavedCredentials()
 
 const focusPassword = () => {
   passwordInput.value.focus()
@@ -79,6 +109,15 @@ const handleLogin = async () => {
     })
 
     if (result.success) {
+      // 处理记住我功能
+      if (rememberMe.value) {
+        localStorage.setItem('savedUsername', username.value)
+        localStorage.setItem('rememberMe', 'true')
+      } else {
+        localStorage.removeItem('savedUsername')
+        localStorage.removeItem('rememberMe')
+      }
+
       Toast({
         message: result.message,
         theme: 'success'
@@ -104,6 +143,10 @@ const handleLogin = async () => {
 const goToRegister = () => {
   router.push('/register')
 }
+
+const goToForgotPassword = () => {
+  router.push('/forgot-password')
+}
 </script>
 
 <style scoped>
@@ -122,6 +165,44 @@ const goToRegister = () => {
 
 .register-link a:hover {
   text-decoration: underline;
+}
+
+.forgot-password-link {
+  text-align: center;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.forgot-password-link a {
+  color: #0052d9;
+  text-decoration: none;
+}
+
+.forgot-password-link a:hover {
+  text-decoration: underline;
+}
+
+.remember-me {
+  margin-bottom: 20px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checkmark {
+  margin-left: 4px;
 }
 </style>
 .login-container {

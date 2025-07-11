@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { login as loginApi, register as registerApi, getCurrentUser } from '../api/auth'
+import { login as loginApi, register as registerApi, getCurrentUser, updateProfile as updateProfileApi } from '../api/auth'
 
 export const useUserStore = defineStore('userStore', () => {
   // 用户信息
@@ -83,6 +83,24 @@ export const useUserStore = defineStore('userStore', () => {
     localStorage.removeItem('username')
   }
 
+  // 更新用户资料
+  const updateProfile = async (profileData) => {
+    try {
+      const response = await updateProfileApi(profileData)
+
+      if (response.code === 200) {
+        // 更新本地用户信息
+        user.value = { ...user.value, ...response.data }
+        return { success: true, message: '资料更新成功', data: response.data }
+      } else {
+        return { success: false, message: response.message || '更新失败' }
+      }
+    } catch (error) {
+      console.error('更新资料错误:', error)
+      return { success: false, message: error.message || '更新失败' }
+    }
+  }
+
   // 检查登录状态
   const checkLoginStatus = () => {
     const storedToken = localStorage.getItem('token')
@@ -103,6 +121,7 @@ export const useUserStore = defineStore('userStore', () => {
     login,
     register,
     fetchUserInfo,
+    updateProfile,
     logout,
     checkLoginStatus
   }

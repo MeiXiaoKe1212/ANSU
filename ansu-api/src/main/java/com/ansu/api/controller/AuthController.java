@@ -1,8 +1,6 @@
 package com.ansu.api.controller;
 
-import com.ansu.api.domain.dto.ApiResponse;
-import com.ansu.api.domain.dto.LoginRequest;
-import com.ansu.api.domain.dto.RegisterRequest;
+import com.ansu.api.domain.dto.*;
 import com.ansu.api.domain.entity.SysUser;
 import com.ansu.api.service.UserService;
 import com.ansu.api.util.JwtUtil;
@@ -32,15 +30,15 @@ public class AuthController {
      * 用户登录
      */
     @PostMapping("/login")
-    public ApiResponse<Map<String, Object>> login(@Validated @RequestBody LoginRequest loginRequest) {
+    public ApiResponse<Map<String, Object>> login(@Validated @RequestBody LoginRequest loginRequest, HttpServletRequest request) {
         try {
-            String token = userService.login(loginRequest);
+            String token = userService.login(loginRequest, request);
             SysUser user = userService.findByUsername(loginRequest.getUsername());
-            
+
             Map<String, Object> data = new HashMap<>();
             data.put("token", token);
             data.put("user", user);
-            
+
             return ApiResponse.success("登录成功", data);
         } catch (Exception e) {
             return ApiResponse.error(e.getMessage());
@@ -106,6 +104,56 @@ public class AuthController {
         return ApiResponse.success(!exists); // 返回是否可用
     }
     
+    /**
+     * 忘记密码
+     */
+    @PostMapping("/forgot-password")
+    public ApiResponse<Void> forgotPassword(@Validated @RequestBody ForgotPasswordRequest request) {
+        try {
+            userService.sendPasswordResetEmail(request);
+            return ApiResponse.success("如果该邮箱已注册，您将收到密码重置邮件");
+        } catch (Exception e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 重置密码
+     */
+    @PostMapping("/reset-password")
+    public ApiResponse<Void> resetPassword(@Validated @RequestBody ResetPasswordRequest request) {
+        try {
+            userService.resetPassword(request);
+            return ApiResponse.success("密码重置成功");
+        } catch (Exception e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 更新用户信息
+     */
+    @PutMapping("/profile")
+    public ApiResponse<SysUser> updateProfile(@Validated @RequestBody UpdateProfileRequest request, HttpServletRequest httpRequest) {
+        try {
+            String token = getTokenFromRequest(httpRequest);
+            if (token == null) {
+                return ApiResponse.unauthorized("未提供认证令牌");
+            }
+
+            if (!jwtUtil.validateToken(token)) {
+                return ApiResponse.unauthorized("认证令牌无效");
+            }
+
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            SysUser updatedUser = userService.updateProfile(userId, request);
+
+            return ApiResponse.success("信息更新成功", updatedUser);
+        } catch (Exception e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
     /**
      * 从请求中获取token
      */

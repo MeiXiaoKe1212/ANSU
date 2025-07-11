@@ -21,7 +21,13 @@
           <span>个人信息</span>
           <t-icon name="chevron-right" />
         </div>
-        
+
+        <div class="menu-item" @click="goToEditProfile">
+          <t-icon name="edit" />
+          <span>编辑资料</span>
+          <t-icon name="chevron-right" />
+        </div>
+
         <div class="menu-item" @click="handleLogout">
           <t-icon name="logout" />
           <span>退出登录</span>
@@ -80,6 +86,11 @@ const userInfo = computed(() => userStore.user || {})
 // 显示用户信息
 const showUserInfo = () => {
   userInfoVisible.value = true
+}
+
+// 跳转到编辑资料页面
+const goToEditProfile = () => {
+  router.push('/edit-profile')
 }
 
 // 格式化日期
