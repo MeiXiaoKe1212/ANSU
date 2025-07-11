@@ -47,6 +47,11 @@ public class Vehicle extends BaseEntity {
      */
     private String remarks;
 
+    /**
+     * 创建人ID
+     */
+    private Long createUserId;
+
     public String getLicensePlate() {
         return licensePlate;
     }
@@ -101,5 +106,13 @@ public class Vehicle extends BaseEntity {
 
     public void setRemarks(String remarks) {
         this.remarks = remarks;
+    }
+
+    public Long getCreateUserId() {
+        return createUserId;
+    }
+
+    public void setCreateUserId(Long createUserId) {
+        this.createUserId = createUserId;
     }
 }

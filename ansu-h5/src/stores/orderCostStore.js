@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import request from '../utils/request'
 
 // 订单成本数据存储
 export const useOrderCostStore = defineStore('orderCostStore', () => {
@@ -9,25 +10,20 @@ export const useOrderCostStore = defineStore('orderCostStore', () => {
   // 加载状态
   const loading = ref(false)
   
-  // API基础URL
-  const API_BASE_URL = 'http://localhost:8080/api'
+
   
-  // 获取订单成本列表（不使用缓存，每次都从API获取最新数据）
+  // 获取订单成本列表
   const fetchCostsByOrderId = async (orderId) => {
     loading.value = true
     try {
-      // 添加时间戳参数防止缓存
-      const timestamp = new Date().getTime()
-      const response = await fetch(`${API_BASE_URL}/order-costs/order/${orderId}?t=${timestamp}`)
-      const result = await response.json()
+      const response = await request({
+        url: `/order-costs/order/${orderId}`,
+        method: 'get'
+      })
 
-      if (result.code === 200) {
-        const freshCosts = result.data || []
-        costs.value = freshCosts
-        return freshCosts
-      } else {
-        throw new Error(result.message || '获取成本列表失败')
-      }
+      const freshCosts = response.data || []
+      costs.value = freshCosts
+      return freshCosts
     } catch (error) {
       console.error('获取成本列表失败:', error)
       // 如果API不可用，使用本地模拟数据

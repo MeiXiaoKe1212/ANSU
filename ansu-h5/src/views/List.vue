@@ -260,6 +260,8 @@ const handleOrderSubmit = async (formData) => {
   try {
     await orderStore.createOrder(formData)
     Toast({ message: '订单创建成功', theme: 'success' })
+    // 重新获取订单列表
+    await orderStore.fetchOrders()
   } catch (error) {
     Toast({ message: error.message || '创建失败', theme: 'error' })
   }

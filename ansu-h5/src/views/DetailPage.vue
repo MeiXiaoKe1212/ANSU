@@ -471,13 +471,10 @@ const handleBack = () => {
 // 更新运输状态
 const updateTransportStatus = async (status) => {
   try {
-    const success = await orderStore.updateTransportStatus(orderId.value, status, '手动更新状态')
-    if (success) {
-      order.value.transportStatus = status
-      Toast({ message: '运输状态更新成功', theme: 'success' })
-    } else {
-      Toast({ message: '运输状态更新失败', theme: 'error' })
-    }
+    await orderStore.updateTransportStatus(orderId.value, status, '手动更新状态')
+    // 重新获取订单详情以确保数据同步
+    await fetchOrderDetail()
+    Toast({ message: '运输状态更新成功', theme: 'success' })
   } catch (error) {
     console.error('更新运输状态失败:', error)
     Toast({ message: error.message || '运输状态更新失败', theme: 'error' })
@@ -487,13 +484,10 @@ const updateTransportStatus = async (status) => {
 // 更新款项状态
 const updatePaymentStatus = async (status) => {
   try {
-    const success = await orderStore.updatePaymentStatus(orderId.value, status, '手动更新状态')
-    if (success) {
-      order.value.paymentStatus = status
-      Toast({ message: '款项状态更新成功', theme: 'success' })
-    } else {
-      Toast({ message: '款项状态更新失败', theme: 'error' })
-    }
+    await orderStore.updatePaymentStatus(orderId.value, status, '手动更新状态')
+    // 重新获取订单详情以确保数据同步
+    await fetchOrderDetail()
+    Toast({ message: '款项状态更新成功', theme: 'success' })
   } catch (error) {
     console.error('更新款项状态失败:', error)
     Toast({ message: error.message || '款项状态更新失败', theme: 'error' })

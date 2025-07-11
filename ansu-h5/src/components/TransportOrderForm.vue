@@ -232,7 +232,7 @@ const handleSubmit = async ({ validateResult }) => {
       submitData.isOutsourced = submitData.isOutsourced ? 1 : 0
       
       emit('submit', submitData)
-      Toast.success(isEdit.value ? '更新成功' : '创建成功')
+      // 不在这里显示成功消息，由父组件处理
       closeForm()
     } catch (error) {
       Toast.error(error.message || '操作失败')

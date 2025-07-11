@@ -14,7 +14,6 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/order-events")
-@CrossOrigin(origins = "*")
 public class OrderEventController {
 
     @Autowired

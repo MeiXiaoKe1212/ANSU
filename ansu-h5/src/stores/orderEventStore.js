@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import request from '../utils/request'
 
 // 订单事件数据存储
 export const useOrderEventStore = defineStore('orderEventStore', () => {
@@ -9,22 +10,19 @@ export const useOrderEventStore = defineStore('orderEventStore', () => {
   // 加载状态
   const loading = ref(false)
   
-  // API基础URL
-  const API_BASE_URL = 'http://localhost:8080/api'
+
   
   // 获取订单事件列表
   const fetchEventsByOrderId = async (orderId) => {
     loading.value = true
     try {
-      const response = await fetch(`${API_BASE_URL}/order-events/order/${orderId}`)
-      const result = await response.json()
-      
-      if (result.code === 200) {
-        events.value = result.data || []
-        return result.data
-      } else {
-        throw new Error(result.message || '获取事件列表失败')
-      }
+      const response = await request({
+        url: `/order-events/order/${orderId}`,
+        method: 'get'
+      })
+
+      events.value = response.data || []
+      return response.data
     } catch (error) {
       console.error('获取事件列表失败:', error)
       // 如果API不可用，使用本地模拟数据

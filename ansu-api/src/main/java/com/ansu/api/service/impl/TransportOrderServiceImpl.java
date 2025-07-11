@@ -37,25 +37,60 @@ public class TransportOrderServiceImpl extends ServiceImpl<TransportOrderMapper,
     @Override
     public IPage<TransportOrder> pageOrders(Page<TransportOrder> page, String keyword, String transportStatus, String paymentStatus) {
         LambdaQueryWrapper<TransportOrder> wrapper = new LambdaQueryWrapper<>();
-        
+
         if (StrUtil.isNotBlank(keyword)) {
             wrapper.and(w -> w.like(TransportOrder::getOrderNo, keyword)
                     .or().like(TransportOrder::getCustomerCompanyName, keyword)
                     .or().like(TransportOrder::getCargoName, keyword)
                     .or().like(TransportOrder::getLicensePlate, keyword));
         }
-        
+
         if (StrUtil.isNotBlank(transportStatus)) {
             wrapper.eq(TransportOrder::getTransportStatus, transportStatus);
         }
-        
+
         if (StrUtil.isNotBlank(paymentStatus)) {
             wrapper.eq(TransportOrder::getPaymentStatus, paymentStatus);
         }
-        
+
         wrapper.orderByDesc(TransportOrder::getCreateTime);
-        
+
         return this.page(page, wrapper);
+    }
+
+    @Override
+    public IPage<TransportOrder> pageOrdersByUserId(Page<TransportOrder> page, Long userId, String keyword, String transportStatus, String paymentStatus) {
+        LambdaQueryWrapper<TransportOrder> wrapper = new LambdaQueryWrapper<>();
+
+        // 添加用户ID过滤条件
+        wrapper.eq(TransportOrder::getCreateUserId, userId);
+
+        if (StrUtil.isNotBlank(keyword)) {
+            wrapper.and(w -> w.like(TransportOrder::getOrderNo, keyword)
+                    .or().like(TransportOrder::getCustomerCompanyName, keyword)
+                    .or().like(TransportOrder::getCargoName, keyword)
+                    .or().like(TransportOrder::getLicensePlate, keyword));
+        }
+
+        if (StrUtil.isNotBlank(transportStatus)) {
+            wrapper.eq(TransportOrder::getTransportStatus, transportStatus);
+        }
+
+        if (StrUtil.isNotBlank(paymentStatus)) {
+            wrapper.eq(TransportOrder::getPaymentStatus, paymentStatus);
+        }
+
+        wrapper.orderByDesc(TransportOrder::getCreateTime);
+
+        return this.page(page, wrapper);
+    }
+
+    @Override
+    public TransportOrder getByIdAndUserId(Long id, Long userId) {
+        LambdaQueryWrapper<TransportOrder> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TransportOrder::getId, id)
+               .eq(TransportOrder::getCreateUserId, userId);
+        return this.getOne(wrapper);
     }
 
     @Override
@@ -226,31 +261,115 @@ public class TransportOrderServiceImpl extends ServiceImpl<TransportOrderMapper,
     }
 
     @Override
+    public Map<String, Object> getOrderStatisticsByUserId(Long userId) {
+        Map<String, Object> statistics = new HashMap<>();
+
+        LambdaQueryWrapper<TransportOrder> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TransportOrder::getCreateUserId, userId);
+
+        // 总订单数
+        long totalOrders = this.count(wrapper);
+        statistics.put("totalOrders", totalOrders);
+
+        // 总收入
+        wrapper.isNotNull(TransportOrder::getActualPrice);
+        List<TransportOrder> orders = this.list(wrapper);
+        BigDecimal totalRevenue = orders.stream()
+                .map(TransportOrder::getActualPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        statistics.put("totalRevenue", totalRevenue);
+
+        // 总利润
+        BigDecimal totalProfit = orders.stream()
+                .map(order -> order.getProfit() != null ? order.getProfit() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        statistics.put("totalProfit", totalProfit);
+
+        // 平均利润率
+        BigDecimal avgProfitRate = BigDecimal.ZERO;
+        if (totalOrders > 0) {
+            avgProfitRate = orders.stream()
+                    .map(order -> order.getProfitRate() != null ? order.getProfitRate() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP);
+        }
+        statistics.put("avgProfitRate", avgProfitRate);
+
+        return statistics;
+    }
+
+    @Override
+    public Map<String, Long> getOrderCountByStatusAndUserId(Long userId) {
+        Map<String, Long> statusCount = new HashMap<>();
+
+        // 运输状态统计
+        String[] transportStatuses = {"CREATED", "DEPARTED", "TRANSPORTING", "EXCEPTION", "DELIVERED"};
+        for (String status : transportStatuses) {
+            LambdaQueryWrapper<TransportOrder> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(TransportOrder::getCreateUserId, userId)
+                   .eq(TransportOrder::getTransportStatus, status);
+            long count = this.count(wrapper);
+            statusCount.put(status, count);
+        }
+
+        return statusCount;
+    }
+
+    @Override
     public List<Map<String, Object>> getMonthlyRevenue() {
         // 这里简化实现，实际项目中可能需要使用原生SQL查询
         List<Map<String, Object>> monthlyData = new ArrayList<>();
-        
+
         LambdaQueryWrapper<TransportOrder> wrapper = new LambdaQueryWrapper<>();
         wrapper.isNotNull(TransportOrder::getActualPrice);
         wrapper.orderByDesc(TransportOrder::getCreateTime);
         List<TransportOrder> orders = this.list(wrapper);
-        
+
         // 按月份分组统计（简化实现）
         Map<String, BigDecimal> monthlyRevenue = new HashMap<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM");
-        
+
         for (TransportOrder order : orders) {
             String month = order.getCreateTime().format(formatter);
             monthlyRevenue.merge(month, order.getActualPrice(), BigDecimal::add);
         }
-        
+
         for (Map.Entry<String, BigDecimal> entry : monthlyRevenue.entrySet()) {
             Map<String, Object> monthData = new HashMap<>();
             monthData.put("month", entry.getKey());
             monthData.put("revenue", entry.getValue());
             monthlyData.add(monthData);
         }
-        
+
+        return monthlyData;
+    }
+
+    @Override
+    public List<Map<String, Object>> getMonthlyRevenueByUserId(Long userId) {
+        List<Map<String, Object>> monthlyData = new ArrayList<>();
+
+        LambdaQueryWrapper<TransportOrder> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TransportOrder::getCreateUserId, userId)
+               .isNotNull(TransportOrder::getActualPrice)
+               .orderByDesc(TransportOrder::getCreateTime);
+        List<TransportOrder> orders = this.list(wrapper);
+
+        // 按月份分组统计
+        Map<String, BigDecimal> monthlyRevenue = new HashMap<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM");
+
+        for (TransportOrder order : orders) {
+            String month = order.getCreateTime().format(formatter);
+            monthlyRevenue.merge(month, order.getActualPrice(), BigDecimal::add);
+        }
+
+        for (Map.Entry<String, BigDecimal> entry : monthlyRevenue.entrySet()) {
+            Map<String, Object> monthData = new HashMap<>();
+            monthData.put("month", entry.getKey());
+            monthData.put("revenue", entry.getValue());
+            monthlyData.add(monthData);
+        }
+
         return monthlyData;
     }
 

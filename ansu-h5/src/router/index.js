@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 // Lazy-loaded route components
 const Login = () => import('../views/Login.vue')
+const Register = () => import('../views/Register.vue')
 const Layout = () => import('../layout/Layout.vue')
 
 const routes = [
@@ -13,6 +14,12 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: Login,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: Register,
     meta: { requiresAuth: false }
   },
   {

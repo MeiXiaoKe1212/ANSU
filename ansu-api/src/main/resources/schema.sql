@@ -25,11 +25,13 @@ CREATE TABLE IF NOT EXISTS `customer` (
   `email` varchar(100) DEFAULT NULL COMMENT '邮箱',
   `credit_level` varchar(20) DEFAULT 'A' COMMENT '信用等级：A-优秀，B-良好，C-一般，D-差',
   `remarks` text COMMENT '备注',
+  `create_user_id` bigint NOT NULL COMMENT '创建人ID',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   KEY `idx_company_name` (`company_name`),
-  KEY `idx_contact_phone` (`contact_phone`)
+  KEY `idx_contact_phone` (`contact_phone`),
+  KEY `idx_create_user_id` (`create_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客户表';
 
 -- 司机表
@@ -42,11 +44,13 @@ CREATE TABLE IF NOT EXISTS `driver` (
   `license_type` varchar(10) DEFAULT NULL COMMENT '驾驶证类型',
   `status` tinyint DEFAULT 1 COMMENT '状态：0-离职，1-在职',
   `remarks` text COMMENT '备注',
+  `create_user_id` bigint NOT NULL COMMENT '创建人ID',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_phone` (`phone`),
-  KEY `idx_name` (`name`)
+  KEY `idx_name` (`name`),
+  KEY `idx_create_user_id` (`create_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='司机表';
 
 -- 车辆表
@@ -59,10 +63,12 @@ CREATE TABLE IF NOT EXISTS `vehicle` (
   `volume_capacity` decimal(10,2) DEFAULT NULL COMMENT '容积（立方米）',
   `status` tinyint DEFAULT 1 COMMENT '状态：0-停用，1-可用，2-维修中',
   `remarks` text COMMENT '备注',
+  `create_user_id` bigint NOT NULL COMMENT '创建人ID',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_license_plate` (`license_plate`)
+  UNIQUE KEY `uk_license_plate` (`license_plate`),
+  KEY `idx_create_user_id` (`create_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='车辆表';
 
 -- 运输订单表
@@ -108,7 +114,8 @@ CREATE TABLE IF NOT EXISTS `transport_order` (
   KEY `idx_driver_id` (`driver_id`),
   KEY `idx_transport_status` (`transport_status`),
   KEY `idx_payment_status` (`payment_status`),
-  KEY `idx_create_time` (`create_time`)
+  KEY `idx_create_time` (`create_time`),
+  KEY `idx_create_user_id` (`create_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='运输订单表';
 
 -- 订单成本表

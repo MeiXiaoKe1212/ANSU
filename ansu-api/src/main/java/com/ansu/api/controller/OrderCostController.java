@@ -1,10 +1,17 @@
 package com.ansu.api.controller;
 
+import com.ansu.api.domain.dto.ApiResponse;
 import com.ansu.api.domain.entity.OrderCost;
+import com.ansu.api.domain.entity.SysUser;
+import com.ansu.api.domain.entity.TransportOrder;
 import com.ansu.api.service.OrderCostService;
+import com.ansu.api.service.TransportOrderService;
+import com.ansu.api.service.UserService;
+import com.ansu.api.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,72 +21,93 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/order-costs")
-@CrossOrigin(origins = "*")
 public class OrderCostController {
 
     @Autowired
     private OrderCostService orderCostService;
 
+    @Autowired
+    private TransportOrderService transportOrderService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
     /**
      * 根据订单ID查询成本列表
      */
     @GetMapping("/order/{orderId}")
-    public Map<String, Object> getCostsByOrderId(@PathVariable Long orderId) {
-        List<OrderCost> costs = orderCostService.getCostsByOrderId(orderId);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "查询成功");
-        response.put("data", costs);
-        
-        return response;
+    public ApiResponse<List<OrderCost>> getCostsByOrderId(@PathVariable Long orderId, HttpServletRequest request) {
+        try {
+            Long userId = getUserIdFromRequest(request);
+
+            // 验证订单是否属于当前用户
+            TransportOrder order = transportOrderService.getByIdAndUserId(orderId, userId);
+            if (order == null) {
+                return ApiResponse.error(404, "订单不存在或无权访问");
+            }
+
+            List<OrderCost> costs = orderCostService.getCostsByOrderId(orderId);
+            return ApiResponse.success(costs);
+        } catch (Exception e) {
+            return ApiResponse.error(e.getMessage());
+        }
     }
 
     /**
      * 添加订单成本
      */
     @PostMapping
-    public Map<String, Object> addCost(@RequestBody OrderCost cost) {
-        Map<String, Object> response = new HashMap<>();
-        
+    public ApiResponse<OrderCost> addCost(@RequestBody OrderCost cost, HttpServletRequest request) {
         try {
+            Long userId = getUserIdFromRequest(request);
+
+            // 验证订单是否属于当前用户
+            TransportOrder order = transportOrderService.getByIdAndUserId(cost.getOrderId(), userId);
+            if (order == null) {
+                return ApiResponse.error(404, "订单不存在或无权访问");
+            }
+
             OrderCost savedCost = orderCostService.addCost(cost);
-            
-            response.put("code", 200);
-            response.put("message", "添加成功");
-            response.put("data", savedCost);
+            return ApiResponse.success("添加成功", savedCost);
         } catch (Exception e) {
-            response.put("code", 500);
-            response.put("message", "添加失败：" + e.getMessage());
+            return ApiResponse.error("添加失败：" + e.getMessage());
         }
-        
-        return response;
     }
 
     /**
      * 更新订单成本
      */
     @PutMapping("/{id}")
-    public Map<String, Object> updateCost(@PathVariable Long id, @RequestBody OrderCost cost) {
-        Map<String, Object> response = new HashMap<>();
-        
+    public ApiResponse<Void> updateCost(@PathVariable Long id, @RequestBody OrderCost cost, HttpServletRequest request) {
         try {
+            Long userId = getUserIdFromRequest(request);
+
+            // 先获取现有成本记录
+            OrderCost existingCost = orderCostService.getById(id);
+            if (existingCost == null) {
+                return ApiResponse.error(404, "成本记录不存在");
+            }
+
+            // 验证订单是否属于当前用户
+            TransportOrder order = transportOrderService.getByIdAndUserId(existingCost.getOrderId(), userId);
+            if (order == null) {
+                return ApiResponse.error(404, "订单不存在或无权访问");
+            }
+
             cost.setId(id);
             boolean success = orderCostService.updateById(cost);
-            
+
             if (success) {
-                response.put("code", 200);
-                response.put("message", "更新成功");
+                return ApiResponse.success("更新成功", null);
             } else {
-                response.put("code", 500);
-                response.put("message", "更新失败");
+                return ApiResponse.error("更新失败");
             }
         } catch (Exception e) {
-            response.put("code", 500);
-            response.put("message", "更新失败：" + e.getMessage());
+            return ApiResponse.error("更新失败：" + e.getMessage());
         }
-        
-        return response;
     }
 
     /**
