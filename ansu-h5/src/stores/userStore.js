@@ -27,6 +27,7 @@ export const useUserStore = defineStore('userStore', () => {
         localStorage.setItem('token', accessToken)
         localStorage.setItem('refreshToken', newRefreshToken)
         localStorage.setItem('username', userInfo.username)
+        localStorage.setItem('realName', userInfo.realName || userInfo.username)
         
         return { success: true, message: response.message, data: response.data }
       } else {
@@ -74,6 +75,7 @@ export const useUserStore = defineStore('userStore', () => {
         // 更新本地存储
         localStorage.setItem('token', accessToken)
         localStorage.setItem('refreshToken', newRefreshToken)
+        localStorage.setItem('realName', userInfo.realName || userInfo.username)
         
         return { success: true, data: response.data }
       } else {
@@ -120,6 +122,7 @@ export const useUserStore = defineStore('userStore', () => {
     localStorage.removeItem('token')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('username')
+    localStorage.removeItem('realName')
   }
 
   // 检查登录状态

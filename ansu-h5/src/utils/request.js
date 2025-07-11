@@ -122,6 +122,7 @@ request.interceptors.response.use(
             localStorage.removeItem('token')
             localStorage.removeItem('refreshToken')
             localStorage.removeItem('username')
+            localStorage.removeItem('realName')
             
             Toast({
               message: '登录已过期，请重新登录',
@@ -141,6 +142,7 @@ request.interceptors.response.use(
           localStorage.removeItem('token')
           localStorage.removeItem('refreshToken')
           localStorage.removeItem('username')
+          localStorage.removeItem('realName')
           
           Toast({
             message: '未授权，请重新登录',

@@ -111,7 +111,7 @@ echarts.use([
 ])
 
 const orderStore = useTransportOrderStore()
-const username = computed(() => localStorage.getItem('username') || '用户')
+const username = computed(() => localStorage.getItem('realName') || localStorage.getItem('username') || '用户')
 
 // 图表相关
 const activeTimeRange = ref('week')
