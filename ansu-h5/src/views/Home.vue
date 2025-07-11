@@ -84,6 +84,7 @@ import { ref, computed, h, onMounted, watch, onUnmounted } from 'vue'
 import { AddIcon } from 'tdesign-icons-vue-next'
 import { Toast, Tabs, TabPanel, RadioGroup, Radio } from 'tdesign-mobile-vue'
 import { useBillStore } from '../stores/billStore'
+import { useUserStore } from '../stores/userStore'
 import BillForm from '../components/BillForm.vue'
 import * as echarts from 'echarts/core'
 import { 
@@ -108,7 +109,10 @@ echarts.use([
 ])
 
 const billStore = useBillStore()
-const username = computed(() => localStorage.getItem('username') || '用户')
+const userStore = useUserStore()
+const username = computed(() => {
+  return userStore.user?.realName || userStore.user?.username || localStorage.getItem('username') || '用户'
+})
 
 // 图表相关
 const activeTimeRange = ref('week')

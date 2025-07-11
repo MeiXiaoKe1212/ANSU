@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 // Lazy-loaded route components
 const Login = () => import('../views/Login.vue')
+const Register = () => import('../views/Register.vue')
 const Layout = () => import('../layout/Layout.vue')
 
 const routes = [
@@ -13,6 +14,12 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: Login,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: Register,
     meta: { requiresAuth: false }
   },
   {
@@ -37,6 +44,12 @@ const routes = [
         name: 'Detail',
         component: () => import('../views/DetailPage.vue'),
         meta: { title: '详情' }
+      },
+      {
+        path: 'profile',
+        name: 'Profile',
+        component: () => import('../views/Profile.vue'),
+        meta: { title: '个人中心' }
       }
     ]
   }
@@ -49,13 +62,21 @@ const router = createRouter({
 
 // Navigation guard for authentication
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = localStorage.getItem('token')
-  
-  if (to.meta.requiresAuth && !isAuthenticated) {
+  const token = localStorage.getItem('token')
+
+  // 如果访问需要认证的页面但没有token，跳转到登录页
+  if (to.meta.requiresAuth && !token) {
     next('/login')
-  } else {
-    next()
+    return
   }
+
+  // 如果已登录用户访问登录或注册页面，跳转到首页
+  if (token && (to.path === '/login' || to.path === '/register')) {
+    next('/home')
+    return
+  }
+
+  next()
 })
 
 export default router 
