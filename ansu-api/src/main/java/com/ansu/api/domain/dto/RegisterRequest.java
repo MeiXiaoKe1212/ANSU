@@ -29,7 +29,9 @@ public class RegisterRequest {
     private String phone;
     
     private String realName;
-    
+
+    private String tenantCode; // 租户编码，可选
+
     public RegisterRequest() {}
     
     public String getUsername() {
@@ -79,7 +81,15 @@ public class RegisterRequest {
     public void setRealName(String realName) {
         this.realName = realName;
     }
-    
+
+    public String getTenantCode() {
+        return tenantCode;
+    }
+
+    public void setTenantCode(String tenantCode) {
+        this.tenantCode = tenantCode;
+    }
+
     @Override
     public String toString() {
         return "RegisterRequest{" +

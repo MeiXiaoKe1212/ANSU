@@ -21,17 +21,18 @@ public class JwtUtil {
     private Long expiration;
     
     /**
-     * 生成JWT token
+     * 生成JWT token（包含租户信息）
      */
-    public String generateToken(String username, Long userId) {
+    public String generateToken(String username, Long userId, Long tenantId) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
-        
+
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
-        
+
         return Jwts.builder()
                 .setSubject(username)
                 .claim("userId", userId)
+                .claim("tenantId", tenantId)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -52,6 +53,14 @@ public class JwtUtil {
     public Long getUserIdFromToken(String token) {
         Claims claims = getClaimsFromToken(token);
         return claims.get("userId", Long.class);
+    }
+
+    /**
+     * 从token中获取租户ID
+     */
+    public Long getTenantIdFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims.get("tenantId", Long.class);
     }
     
     /**

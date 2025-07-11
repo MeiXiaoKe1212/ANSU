@@ -67,45 +67,11 @@ export const checkEmail = (email) => {
 }
 
 /**
- * 忘记密码
- * @param {Object} data - 忘记密码数据
- * @param {string} data.email - 邮箱
+ * 刷新Token
  */
-export const forgotPassword = (data) => {
+export const refreshToken = () => {
   return request({
-    url: '/auth/forgot-password',
-    method: 'post',
-    data
-  })
-}
-
-/**
- * 重置密码
- * @param {Object} data - 重置密码数据
- * @param {string} data.token - 重置令牌
- * @param {string} data.newPassword - 新密码
- * @param {string} data.confirmPassword - 确认密码
- */
-export const resetPassword = (data) => {
-  return request({
-    url: '/auth/reset-password',
-    method: 'post',
-    data
-  })
-}
-
-/**
- * 更新用户信息
- * @param {Object} data - 用户信息数据
- * @param {string} data.email - 邮箱
- * @param {string} data.phone - 手机号
- * @param {string} data.realName - 真实姓名
- * @param {string} data.avatar - 头像
- */
-export const updateProfile = (data) => {
-  return request({
-    url: '/auth/profile',
-    method: 'put',
-    data
+    url: '/auth/refresh-token',
+    method: 'post'
   })
 }

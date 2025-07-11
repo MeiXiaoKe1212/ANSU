@@ -1,6 +1,8 @@
 package com.ansu.api.controller;
 
-import com.ansu.api.domain.dto.*;
+import com.ansu.api.domain.dto.ApiResponse;
+import com.ansu.api.domain.dto.LoginRequest;
+import com.ansu.api.domain.dto.RegisterRequest;
 import com.ansu.api.domain.entity.SysUser;
 import com.ansu.api.service.UserService;
 import com.ansu.api.util.JwtUtil;
@@ -13,16 +15,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 认证控制器
+ * 认证控制器（简化版）
  */
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*") // 允许跨域，生产环境应该配置具体域名
 public class AuthController {
-    
+
     @Autowired
     private UserService userService;
-    
+
     @Autowired
     private JwtUtil jwtUtil;
     
@@ -30,14 +32,19 @@ public class AuthController {
      * 用户登录
      */
     @PostMapping("/login")
-    public ApiResponse<Map<String, Object>> login(@Validated @RequestBody LoginRequest loginRequest, HttpServletRequest request) {
+    public ApiResponse<Map<String, Object>> login(@Validated @RequestBody LoginRequest loginRequest) {
         try {
-            String token = userService.login(loginRequest, request);
-            SysUser user = userService.findByUsername(loginRequest.getUsername());
+            String token = userService.login(loginRequest);
+
+            // 从token中获取用户信息
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            Long tenantId = jwtUtil.getTenantIdFromToken(token);
+            SysUser user = userService.findById(userId);
 
             Map<String, Object> data = new HashMap<>();
             data.put("token", token);
             data.put("user", user);
+            data.put("tenantId", tenantId);
 
             return ApiResponse.success("登录成功", data);
         } catch (Exception e) {
@@ -62,97 +69,58 @@ public class AuthController {
      * 获取当前用户信息
      */
     @GetMapping("/me")
-    public ApiResponse<SysUser> getCurrentUser(HttpServletRequest request) {
+    public ApiResponse<Map<String, Object>> getCurrentUser(HttpServletRequest request) {
         try {
             String token = getTokenFromRequest(request);
             if (token == null) {
                 return ApiResponse.unauthorized("未提供认证令牌");
             }
-            
+
             if (!jwtUtil.validateToken(token)) {
                 return ApiResponse.unauthorized("认证令牌无效");
             }
-            
+
             Long userId = jwtUtil.getUserIdFromToken(token);
+            Long tenantId = jwtUtil.getTenantIdFromToken(token);
             SysUser user = userService.findById(userId);
-            
+
             if (user == null) {
                 return ApiResponse.unauthorized("用户不存在");
             }
-            
-            return ApiResponse.success(user);
-        } catch (Exception e) {
-            return ApiResponse.error(e.getMessage());
-        }
-    }
-    
-    /**
-     * 检查用户名是否可用
-     */
-    @GetMapping("/check-username")
-    public ApiResponse<Boolean> checkUsername(@RequestParam String username) {
-        boolean exists = userService.existsByUsername(username);
-        return ApiResponse.success(!exists); // 返回是否可用
-    }
-    
-    /**
-     * 检查邮箱是否可用
-     */
-    @GetMapping("/check-email")
-    public ApiResponse<Boolean> checkEmail(@RequestParam String email) {
-        boolean exists = userService.existsByEmail(email);
-        return ApiResponse.success(!exists); // 返回是否可用
-    }
-    
-    /**
-     * 忘记密码
-     */
-    @PostMapping("/forgot-password")
-    public ApiResponse<Void> forgotPassword(@Validated @RequestBody ForgotPasswordRequest request) {
-        try {
-            userService.sendPasswordResetEmail(request);
-            return ApiResponse.success("如果该邮箱已注册，您将收到密码重置邮件");
-        } catch (Exception e) {
-            return ApiResponse.error(e.getMessage());
-        }
-    }
 
-    /**
-     * 重置密码
-     */
-    @PostMapping("/reset-password")
-    public ApiResponse<Void> resetPassword(@Validated @RequestBody ResetPasswordRequest request) {
-        try {
-            userService.resetPassword(request);
-            return ApiResponse.success("密码重置成功");
+            Map<String, Object> data = new HashMap<>();
+            data.put("user", user);
+            data.put("tenantId", tenantId);
+
+            return ApiResponse.success(data);
         } catch (Exception e) {
             return ApiResponse.error(e.getMessage());
         }
     }
-
+    
     /**
-     * 更新用户信息
+     * 刷新Token
      */
-    @PutMapping("/profile")
-    public ApiResponse<SysUser> updateProfile(@Validated @RequestBody UpdateProfileRequest request, HttpServletRequest httpRequest) {
+    @PostMapping("/refresh-token")
+    public ApiResponse<Map<String, Object>> refreshToken(HttpServletRequest request) {
         try {
-            String token = getTokenFromRequest(httpRequest);
-            if (token == null) {
+            String oldToken = getTokenFromRequest(request);
+            if (oldToken == null) {
                 return ApiResponse.unauthorized("未提供认证令牌");
             }
 
-            if (!jwtUtil.validateToken(token)) {
-                return ApiResponse.unauthorized("认证令牌无效");
-            }
+            String newToken = userService.refreshToken(oldToken);
 
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            SysUser updatedUser = userService.updateProfile(userId, request);
+            Map<String, Object> data = new HashMap<>();
+            data.put("token", newToken);
 
-            return ApiResponse.success("信息更新成功", updatedUser);
+            return ApiResponse.success("Token刷新成功", data);
         } catch (Exception e) {
             return ApiResponse.error(e.getMessage());
         }
     }
+    
+
 
     /**
      * 从请求中获取token

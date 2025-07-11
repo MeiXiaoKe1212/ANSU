@@ -71,6 +71,30 @@ const routes = [
         name: 'Profile',
         component: () => import('../views/Profile.vue'),
         meta: { title: '个人中心' }
+      },
+      {
+        path: 'orders',
+        name: 'OrderList',
+        component: () => import('../views/OrderList.vue'),
+        meta: { title: '订单管理' }
+      },
+      {
+        path: 'order-detail/:id',
+        name: 'OrderDetail',
+        component: () => import('../views/OrderDetail.vue'),
+        meta: { title: '订单详情' }
+      },
+      {
+        path: 'create-order',
+        name: 'CreateOrder',
+        component: () => import('../views/CreateOrder.vue'),
+        meta: { title: '创建订单' }
+      },
+      {
+        path: 'edit-order/:id',
+        name: 'EditOrder',
+        component: () => import('../views/CreateOrder.vue'),
+        meta: { title: '编辑订单' }
       }
     ]
   }

@@ -1,481 +1,413 @@
 <template>
   <div>
     <t-navbar title="主页" fixed />
-    
+
     <div class="home-container">
-      <div class="welcome-card">
-        <h2>欢迎, {{ username }}</h2>
-        <p>这是您的账单统计信息</p>
-      </div>
-
-      <!-- 账单统计卡片 -->
-      <div class="stats-card">
-        <div class="stats-summary">
-          <div class="stats-item">
-            <div class="stats-value">{{ billStore.bills.length }}</div>
-            <div class="stats-label">账单总数</div>
-          </div>
-          <div class="stats-item">
-            <div class="stats-value">¥{{ totalBillAmount }}</div>
-            <div class="stats-label">总金额</div>
-          </div>
-          <div class="stats-item">
-            <div class="stats-value">{{ outsourcedCount }}</div>
-            <div class="stats-label">外派账单</div>
-          </div>
-          <div class="stats-item">
-            <div class="stats-value">{{ selfOwnedCount }}</div>
-            <div class="stats-label">自有账单</div>
-          </div>
+      <!-- 用户欢迎区域 -->
+      <div class="welcome-section">
+        <div class="user-info">
+          <h2>你好，{{ username }}！</h2>
+          <p>{{ tenantInfo }}</p>
+        </div>
+        <div class="date-info">
+          <t-icon name="time" size="20px" />
+          <span>{{ currentDate }}</span>
         </div>
       </div>
 
-      <!-- 饼图：外派/自有比例 -->
-      <div class="chart-card">
-        <div class="card-header">
-          <h3>账单类型分布</h3>
+      <!-- 订单统计 -->
+      <div class="stats-section">
+        <div class="stat-item" @click="goToOrders(0)">
+          <div class="stat-number">{{ orderStats.total }}</div>
+          <div class="stat-label">总订单</div>
         </div>
-        <div class="card-body">
-          <div id="pieChart" class="chart-container"></div>
+        <div class="stat-item" @click="goToOrders(1)">
+          <div class="stat-number">{{ orderStats.pending }}</div>
+          <div class="stat-label">待接单</div>
         </div>
-      </div>
-
-      <!-- 图表选项卡 -->
-      <div class="chart-card">
-        <div class="card-header">
-          <h3>账单金额趋势</h3>
+        <div class="stat-item" @click="goToOrders(3)">
+          <div class="stat-number">{{ orderStats.shipping }}</div>
+          <div class="stat-label">运输中</div>
         </div>
-        <div class="card-tabs">
-          <t-tabs v-model="activeTimeRange">
-            <t-tab-panel value="week" label="周"></t-tab-panel>
-            <t-tab-panel value="month" label="月"></t-tab-panel>
-            <t-tab-panel value="halfYear" label="半年"></t-tab-panel>
-          </t-tabs>
-        </div>
-        <div class="card-body">
-          <div id="trendChart" class="chart-container"></div>
+        <div class="stat-item" @click="goToOrders(4)">
+          <div class="stat-number">{{ orderStats.completed }}</div>
+          <div class="stat-label">已完成</div>
         </div>
       </div>
 
-      <!-- 图表类型切换 -->
-      <div class="chart-type-switch">
-        <t-radio-group v-model="chartType">
-          <t-radio value="line">折线图</t-radio>
-          <t-radio value="bar">柱状图</t-radio>
-        </t-radio-group>
+      <!-- 快捷操作 -->
+      <div class="quick-actions">
+        <div class="action-item" @click="createOrder">
+          <div class="action-icon">
+            <t-icon name="add" size="24px" />
+          </div>
+          <span>创建订单</span>
+        </div>
+        <div class="action-item" @click="goToOrders(0)">
+          <div class="action-icon">
+            <t-icon name="view-list" size="24px" />
+          </div>
+          <span>订单列表</span>
+        </div>
+        <div class="action-item" @click="goToOrders(1)">
+          <div class="action-icon">
+            <t-icon name="time" size="24px" />
+          </div>
+          <span>待处理</span>
+        </div>
+        <div class="action-item" @click="goToProfile">
+          <div class="action-icon">
+            <t-icon name="user" size="24px" />
+          </div>
+          <span>个人中心</span>
+        </div>
+      </div>
+
+      <!-- 最近订单 -->
+      <div class="recent-orders" v-if="recentOrders.length > 0">
+        <div class="section-header">
+          <h3>最近订单</h3>
+          <span @click="goToOrders(0)" class="view-all">查看全部</span>
+        </div>
+        <div class="order-list">
+          <div
+            v-for="order in recentOrders"
+            :key="order.id"
+            class="order-item"
+            @click="viewOrderDetail(order)"
+          >
+            <div class="order-info">
+              <div class="order-no">{{ order.orderNo }}</div>
+              <div class="order-customer">{{ order.customerName }}</div>
+            </div>
+            <div class="order-status" :class="getStatusClass(order.status)">
+              {{ getStatusText(order.status) }}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-
-    <!-- 悬浮按钮 -->
-    <t-fab class="custom-fab" :icon="addIconFunc" @click="showAddBillForm" />
-
-    <!-- 账单表单 -->
-    <bill-form 
-      v-model:visible="billFormVisible"
-      :bill-data="currentBillData"
-      @submit="handleBillSubmit"
-      @close="handleFormClose"
-    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, h, onMounted, watch, onUnmounted } from 'vue'
-import { AddIcon } from 'tdesign-icons-vue-next'
-import { Toast, Tabs, TabPanel, RadioGroup, Radio } from 'tdesign-mobile-vue'
-import { useBillStore } from '../stores/billStore'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
-import BillForm from '../components/BillForm.vue'
-import * as echarts from 'echarts/core'
-import { 
-  TitleComponent, 
-  TooltipComponent, 
-  LegendComponent,
-  GridComponent
-} from 'echarts/components'
-import { PieChart, LineChart, BarChart } from 'echarts/charts'
-import { CanvasRenderer } from 'echarts/renderers'
+import { getAllOrders } from '../api/order'
 
-// 注册必需的组件
-echarts.use([
-  TitleComponent, 
-  TooltipComponent, 
-  LegendComponent,
-  GridComponent,
-  PieChart,
-  LineChart,
-  BarChart,
-  CanvasRenderer
-])
-
-const billStore = useBillStore()
+const router = useRouter()
 const userStore = useUserStore()
+
+const orders = ref([])
+const orderStats = ref({
+  total: 0,
+  pending: 0,
+  shipping: 0,
+  completed: 0
+})
+
 const username = computed(() => {
   return userStore.user?.realName || userStore.user?.username || localStorage.getItem('username') || '用户'
 })
 
-// 图表相关
-const activeTimeRange = ref('week')
-const chartType = ref('line')
-let pieChartInstance = null
-let trendChartInstance = null
-
-// 账单统计数据
-const totalBillAmount = computed(() => {
-  return billStore.bills
-    .reduce((sum, bill) => sum + (bill.totalCost || 0), 0)
-    .toFixed(2)
+const tenantInfo = computed(() => {
+  const tenantId = userStore.tenantId
+  if (tenantId === 1) return '默认租户'
+  if (tenantId === 2) return '演示公司A'
+  if (tenantId === 3) return '演示公司B'
+  return `租户ID: ${tenantId}`
 })
 
-const outsourcedCount = computed(() => {
-  return billStore.bills.filter(bill => bill.isOutsourced).length
+const currentDate = computed(() => {
+  const now = new Date()
+  return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`
 })
 
-const selfOwnedCount = computed(() => {
-  return billStore.bills.filter(bill => !bill.isOutsourced).length
+const recentOrders = computed(() => {
+  return orders.value.slice(0, 5) // 显示最近5个订单
 })
 
-// 初始化饼图
-const initPieChart = () => {
-  if (!document.getElementById('pieChart')) return
-  
-  pieChartInstance = echarts.init(document.getElementById('pieChart'))
-  const option = {
-    tooltip: {
-      trigger: 'item',
-      formatter: '{b}: {c} ({d}%)'
-    },
-    legend: {
-      orient: 'horizontal',
-      bottom: 0
-    },
-    series: [
-      {
-        name: '账单类型',
-        type: 'pie',
-        radius: ['40%', '70%'],
-        avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 10,
-          borderColor: '#fff',
-          borderWidth: 2
-        },
-        label: {
-          show: false,
-          position: 'center'
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: '18',
-            fontWeight: 'bold'
-          }
-        },
-        labelLine: {
-          show: false
-        },
-        data: [
-          { value: outsourcedCount.value, name: '外派账单' },
-          { value: selfOwnedCount.value, name: '自有账单' }
-        ]
-      }
-    ]
+// 获取订单数据
+const fetchOrders = async () => {
+  try {
+    const response = await getAllOrders()
+    if (response.code === 200) {
+      orders.value = response.data || []
+      calculateOrderStats()
+    }
+  } catch (error) {
+    console.error('获取订单失败:', error)
   }
-  
-  pieChartInstance.setOption(option)
 }
 
-// 获取趋势图数据
-const getTrendData = () => {
-  // 根据选择的时间范围生成日期
-  let dates = []
-  let now = new Date()
-  
-  if (activeTimeRange.value === 'week') {
-    // 生成过去7天的日期
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(now)
-      date.setDate(now.getDate() - i)
-      dates.push(formatDate(date))
-    }
-  } else if (activeTimeRange.value === 'month') {
-    // 生成过去30天的日期
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date(now)
-      date.setDate(now.getDate() - i)
-      dates.push(formatDate(date))
-    }
-  } else if (activeTimeRange.value === 'halfYear') {
-    // 生成过去6个月的月份
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(now)
-      date.setMonth(now.getMonth() - i)
-      dates.push(formatMonth(date))
-    }
+// 计算订单统计
+const calculateOrderStats = () => {
+  const stats = {
+    total: orders.value.length,
+    pending: 0,
+    shipping: 0,
+    completed: 0
   }
-  
-  // 按日期分组账单并计算总金额
-  const amountByDate = {}
-  dates.forEach(date => {
-    amountByDate[date] = 0
-  })
-  
-  billStore.bills.forEach(bill => {
-    if (!bill.createTime) return
-    
-    const billDate = new Date(bill.createTime)
-    let dateKey
-    
-    if (activeTimeRange.value === 'halfYear') {
-      dateKey = formatMonth(billDate)
-    } else {
-      dateKey = formatDate(billDate)
-    }
-    
-    if (amountByDate[dateKey] !== undefined) {
-      amountByDate[dateKey] += (bill.totalCost || 0)
+
+  orders.value.forEach(order => {
+    switch (order.status) {
+      case 1:
+        stats.pending++
+        break
+      case 3:
+        stats.shipping++
+        break
+      case 4:
+        stats.completed++
+        break
     }
   })
-  
-  return {
-    dates,
-    amounts: dates.map(date => amountByDate[date])
+
+  orderStats.value = stats
+}
+
+// 导航方法
+const goToOrders = (status) => {
+  router.push({ path: '/orders', query: { status } })
+}
+
+const createOrder = () => {
+  router.push('/create-order')
+}
+
+const goToProfile = () => {
+  router.push('/profile')
+}
+
+const viewOrderDetail = (order) => {
+  router.push(`/order-detail/${order.id}`)
+}
+
+// 获取状态样式类
+const getStatusClass = (status) => {
+  const statusClasses = {
+    1: 'status-pending',
+    2: 'status-accepted',
+    3: 'status-shipping',
+    4: 'status-completed',
+    5: 'status-cancelled'
   }
+  return statusClasses[status] || ''
 }
 
-// 初始化趋势图
-const initTrendChart = () => {
-  if (!document.getElementById('trendChart')) return
-  
-  trendChartInstance = echarts.init(document.getElementById('trendChart'))
-  updateTrendChart()
-}
-
-// 更新趋势图
-const updateTrendChart = () => {
-  if (!trendChartInstance) return
-  
-  const { dates, amounts } = getTrendData()
-  
-  const option = {
-    tooltip: {
-      trigger: 'axis',
-      formatter: '{b}: ¥{c}'
-    },
-    xAxis: {
-      type: 'category',
-      data: dates,
-      axisLabel: {
-        interval: activeTimeRange.value === 'month' ? 3 : 0,
-        rotate: activeTimeRange.value === 'month' ? 45 : 0
-      }
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: {
-        formatter: '¥{value}'
-      }
-    },
-    series: [
-      {
-        name: '账单金额',
-        type: chartType.value,
-        data: amounts,
-        itemStyle: {
-          color: '#0052d9'
-        },
-        areaStyle: chartType.value === 'line' ? {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(0,82,217,0.5)' },
-              { offset: 1, color: 'rgba(0,82,217,0.1)' }
-            ]
-          }
-        } : undefined
-      }
-    ]
+// 获取状态文本
+const getStatusText = (status) => {
+  const statusTexts = {
+    1: '待接单',
+    2: '已接单',
+    3: '运输中',
+    4: '已完成',
+    5: '已取消'
   }
-  
-  trendChartInstance.setOption(option)
+  return statusTexts[status] || '未知状态'
 }
 
-// 格式化日期为 MM-DD 格式
-const formatDate = (date) => {
-  return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
-// 格式化日期为 YYYY-MM 格式
-const formatMonth = (date) => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-}
-
-// 监听时间范围和图表类型变化
-watch([activeTimeRange, chartType], () => {
-  updateTrendChart()
-})
-
-// 监听窗口大小变化，调整图表大小
-const handleResize = () => {
-  pieChartInstance?.resize()
-  trendChartInstance?.resize()
-}
-
-// 悬浮按钮图标
-const addIconFunc = () => h(AddIcon, { size: '24px' })
-
-// 账单表单控制
-const billFormVisible = ref(false)
-const currentBillData = ref({})
-
-// 显示添加账单表单
-const showAddBillForm = () => {
-  currentBillData.value = {}
-  billFormVisible.value = true
-}
-
-// 处理账单提交
-const handleBillSubmit = (formData) => {
-  billStore.addBill(formData)
-  Toast({ message: '账单添加成功', theme: 'success' })
-  
-  // 更新图表
-  initPieChart()
-  updateTrendChart()
-}
-
-// 处理表单关闭
-const handleFormClose = () => {
-  currentBillData.value = {}
-}
-
-// 组件挂载后初始化图表
 onMounted(() => {
-  initPieChart()
-  initTrendChart()
-  
-  window.addEventListener('resize', handleResize)
+  fetchOrders()
 })
 
-// 组件卸载前移除事件监听
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-  pieChartInstance?.dispose()
-  trendChartInstance?.dispose()
-})
 </script>
 
 <style scoped>
 .home-container {
   padding: 15px;
   padding-top: 56px; /* 为固定导航栏留出空间 */
-  padding-bottom: 80px; /* 为悬浮按钮留出空间 */
+  padding-bottom: 80px; /* 为底部导航留出空间 */
+  background: #f5f5f5;
+  min-height: 100vh;
 }
 
-.welcome-card {
-  background-color: #fff;
+.welcome-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 12px;
   padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.welcome-card h2 {
-  margin-top: 0;
-  margin-bottom: 10px;
+.user-info h2 {
+  margin: 0 0 5px 0;
   font-size: 20px;
+  font-weight: 600;
+}
+
+.user-info p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.date-info {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.date-info span {
+  margin-left: 5px;
+}
+
+.stats-section {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  background: white;
+  border-radius: 12px;
+  padding: 15px 10px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.action-item {
+  background: white;
+  border-radius: 12px;
+  padding: 20px 10px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.action-item:hover {
+  transform: translateY(-2px);
+}
+
+.action-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+}
+
+.action-item span {
+  font-size: 12px;
   color: #333;
 }
 
-.welcome-card p {
-  margin: 0;
-  color: #666;
-}
-
-.stats-card {
-  background-color: #fff;
+.recent-orders {
+  background: white;
   border-radius: 12px;
   padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.stats-summary {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
 }
 
-.stats-item {
-  text-align: center;
-  padding: 12px;
-  border-radius: 8px;
-  background-color: #f5f7fa;
-}
-
-.stats-value {
-  font-size: 20px;
-  font-weight: bold;
-  color: #0052d9;
-  margin-bottom: 4px;
-}
-
-.stats-label {
-  font-size: 14px;
-  color: #666;
-}
-
-.chart-card {
-  background-color: #fff;
-  border-radius: 12px;
-  margin-bottom: 16px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.card-header {
-  padding: 15px 20px;
-  border-bottom: 1px solid #eee;
-}
-
-.card-header h3 {
+.section-header h3 {
   margin: 0;
   font-size: 16px;
   color: #333;
+  font-weight: 600;
 }
 
-.card-tabs {
-  padding: 0 10px;
-  border-bottom: 1px solid #eee;
+.view-all {
+  font-size: 14px;
+  color: #0052d9;
+  cursor: pointer;
 }
 
-.card-body {
-  padding: 15px;
+.order-list {
+  space-y: 10px;
 }
 
-.chart-container {
-  height: 300px;
-  width: 100%;
-}
-
-.chart-type-switch {
+.order-item {
   display: flex;
-  justify-content: center;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
 }
 
-@media (min-width: 768px) {
-  .stats-summary {
-    grid-template-columns: repeat(4, 1fr);
+.order-item:last-child {
+  border-bottom: none;
+}
+
+.order-info {
+  flex: 1;
+}
+
+.order-no {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.order-customer {
+  font-size: 12px;
+  color: #666;
+}
+
+.order-status {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-pending { background: #fff3cd; color: #856404; }
+.status-accepted { background: #d4edda; color: #155724; }
+.status-shipping { background: #cce5ff; color: #004085; }
+.status-completed { background: #d1ecf1; color: #0c5460; }
+.status-cancelled { background: #f8d7da; color: #721c24; }
+
+@media (max-width: 480px) {
+  .stats-section {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .quick-actions {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
-
-/* 自定义悬浮按钮位置 */
-:deep(.custom-fab) {
-  bottom: 100px !important; /* 调整按钮位置，使其往上移 */
-}
-</style> 
+</style>

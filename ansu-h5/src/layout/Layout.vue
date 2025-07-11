@@ -26,7 +26,7 @@ const activeTab = ref(route.path)
 
 const navItems = [
   { path: '/home', label: '主页', tIcon: 'home' },
-  { path: '/list', label: '列表', tIcon: 'app' },
+  { path: '/orders', label: '订单', tIcon: 'view-list' },
   { path: '/profile', label: '我的', tIcon: 'user' }
 ]
 

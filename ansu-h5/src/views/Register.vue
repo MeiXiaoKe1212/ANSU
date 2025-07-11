@@ -4,13 +4,23 @@
       <h1 class="app-title">用户注册</h1>
       
       <div class="form-group">
+        <label for="tenantCode">租户编码</label>
+        <input
+          type="text"
+          id="tenantCode"
+          v-model="formData.tenantCode"
+          placeholder="留空则使用默认租户"
+        />
+        <small class="help-text">可选，留空将注册到默认租户</small>
+      </div>
+
+      <div class="form-group">
         <label for="username">用户名 *</label>
-        <input 
-          type="text" 
-          id="username" 
-          v-model="formData.username" 
+        <input
+          type="text"
+          id="username"
+          v-model="formData.username"
           placeholder="请输入用户名（3-20个字符）"
-          @blur="checkUsernameAvailable"
         />
         <div v-if="usernameError" class="error-message">{{ usernameError }}</div>
       </div>
@@ -96,6 +106,7 @@ const userStore = useUserStore()
 
 // 表单数据
 const formData = ref({
+  tenantCode: '',
   username: '',
   password: '',
   confirmPassword: '',
