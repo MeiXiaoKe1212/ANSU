@@ -114,14 +114,17 @@
           </div>
           <div class="cost-list">
             <div v-if="costs && costs.length > 0">
-              <div class="cost-item" v-for="cost in costs" :key="cost.id">
-                <div class="cost-left">
+              <div class="cost-card" v-for="cost in costs" :key="cost.id">
+                <div class="cost-header">
                   <div class="cost-name">{{ cost.costName }}</div>
-                  <div class="cost-desc" v-if="cost.description">{{ cost.description }}</div>
-                </div>
-                <div class="cost-right">
-                  <div class="cost-time">{{ formatDateTime(cost.createTime) }}</div>
                   <div class="cost-amount">¥{{ cost.amount }}</div>
+                </div>
+                <div class="cost-body">
+                  <div class="cost-type">{{ getCostTypeName(cost.costType) }}</div>
+                  <div class="cost-time">{{ formatDate(cost.costDate) }}</div>
+                </div>
+                <div class="cost-desc" v-if="cost.description">{{ cost.description }}</div>
+                <div class="cost-actions">
                   <t-button size="small" theme="primary" variant="text" class="delete-btn" @click="deleteCost(cost.id)">
                     删除
                   </t-button>
@@ -144,34 +147,37 @@
           </div>
           <div class="event-list">
             <div v-if="events && events.length > 0">
-              <div class="event-item" v-for="event in events" :key="event.id">
+              <div class="event-card" v-for="event in events" :key="event.id" :class="{ 'resolved': event.isResolved }">
                 <div class="event-header">
-                  <span class="event-title">{{ event.eventTitle }}</span>
-                  <span class="event-type">{{ getEventTypeName(event.eventType) }}</span>
-                  <span class="impact-badge" :class="getImpactLevelClass(event.impactLevel)">
-                    {{ getImpactLevelName(event.impactLevel) }}
-                  </span>
+                  <div class="event-title">{{ event.eventTitle }}</div>
+                  <div class="event-status">
+                    <span class="event-type">{{ getEventTypeName(event.eventType) }}</span>
+                    <span class="impact-badge" :class="getImpactLevelClass(event.impactLevel)">
+                      {{ getImpactLevelName(event.impactLevel) }}
+                    </span>
+                  </div>
                 </div>
-                <div class="event-detail">
+                <div class="event-body">
                   <div class="event-time">{{ formatDateTime(event.eventTime) }}</div>
                   <div class="event-location" v-if="event.location">📍 {{ event.location }}</div>
-                  <div class="event-desc" v-if="event.eventDescription">{{ event.eventDescription }}</div>
+                </div>
+                <div class="event-desc" v-if="event.eventDescription">{{ event.eventDescription }}</div>
 
-                  <!-- 已解决的事件 -->
-                  <div v-if="event.isResolved" class="event-resolution">
-                    <div class="resolution-time">✅ {{ formatDateTime(event.resolutionTime) }} 已解决</div>
-                    <div class="resolution-desc" v-if="event.resolutionDescription">{{ event.resolutionDescription }}</div>
-                  </div>
+                <!-- 已解决的事件 -->
+                <div v-if="event.isResolved" class="event-resolution">
+                  <div class="resolution-status">✅ 已解决</div>
+                  <div class="resolution-time">{{ formatDateTime(event.resolutionTime) }}</div>
+                  <div class="resolution-desc" v-if="event.resolutionDescription">{{ event.resolutionDescription }}</div>
+                </div>
 
-                  <!-- 未解决的事件操作 -->
-                  <div v-else class="event-actions">
-                    <t-button size="small" theme="primary" variant="text" class="resolve-btn" @click="resolveEvent(event.id)">
-                      标记解决
-                    </t-button>
-                    <t-button size="small" theme="primary" variant="text" class="delete-btn" @click="deleteEvent(event.id)">
-                      删除
-                    </t-button>
-                  </div>
+                <!-- 未解决的事件操作 -->
+                <div v-else class="event-actions">
+                  <t-button size="small" theme="primary" variant="text" class="resolve-btn" @click="resolveEvent(event.id)">
+                    标记解决
+                  </t-button>
+                  <t-button size="small" theme="primary" variant="text" class="delete-btn" @click="deleteEvent(event.id)">
+                    删除
+                  </t-button>
                 </div>
               </div>
             </div>
@@ -492,6 +498,11 @@ const updatePaymentStatus = async (status) => {
     console.error('更新款项状态失败:', error)
     Toast({ message: error.message || '款项状态更新失败', theme: 'error' })
   }
+}
+
+// 获取成本类型名称
+const getCostTypeName = (type) => {
+  return costStore.getCostTypeName(type)
 }
 
 // 获取事件类型名称
@@ -870,98 +881,139 @@ onMounted(() => {
 
 /* 成本列表 */
 .cost-list {
-  max-height: 300px;
+  max-height: 400px;
   overflow-y: auto;
-}
-
-.cost-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.cost-item:last-child {
-  border-bottom: none;
-}
-
-.cost-left {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 12px;
+}
+
+.cost-card {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f0f0f0;
+  transition: box-shadow 0.2s ease;
+}
+
+.cost-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.cost-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
 .cost-name {
-  font-weight: 500;
+  font-weight: 600;
   color: #333;
-  font-size: 14px;
-}
-
-.cost-desc {
-  font-size: 12px;
-  color: #666;
-  line-height: 1.4;
-}
-
-.cost-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  min-width: 120px;
-}
-
-.cost-time {
-  font-size: 11px;
-  color: #999;
+  font-size: 16px;
 }
 
 .cost-amount {
-  font-weight: 600;
+  font-weight: 700;
   color: #ff6b35;
-  font-size: 14px;
+  font-size: 18px;
+}
+
+.cost-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.cost-type {
+  font-size: 12px;
+  color: #666;
+  background-color: #f5f7fa;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.cost-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.cost-desc {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+  margin-bottom: 8px;
+  background-color: #f8f9fa;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.cost-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* 事件列表 */
 .event-list {
-  max-height: 400px;
+  max-height: 500px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.event-item {
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
+.event-card {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f0f0f0;
+  transition: box-shadow 0.2s ease;
 }
 
-.event-item:last-child {
-  border-bottom: none;
+.event-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.event-card.resolved {
+  border-left: 4px solid #52c41a;
+  background-color: #f6ffed;
 }
 
 .event-header {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
 }
 
 .event-title {
-  font-weight: 500;
+  font-weight: 600;
   color: #333;
+  font-size: 16px;
+  flex: 1;
+}
+
+.event-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
 .event-type {
   font-size: 12px;
   color: #666;
-  background-color: #f0f0f0;
-  padding: 2px 6px;
+  background-color: #f5f7fa;
+  padding: 4px 8px;
   border-radius: 4px;
 }
 
 .impact-badge {
   font-size: 11px;
-  padding: 2px 6px;
+  padding: 4px 8px;
   border-radius: 4px;
   font-weight: 500;
 }
@@ -981,47 +1033,65 @@ onMounted(() => {
   color: #c62828;
 }
 
-.event-detail {
-  font-size: 12px;
-  color: #666;
-  line-height: 1.4;
+.event-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
 .event-time {
-  margin-bottom: 4px;
+  font-size: 12px;
+  color: #999;
 }
 
 .event-location {
-  margin-bottom: 4px;
+  font-size: 12px;
   color: #0052d9;
+  font-weight: 500;
 }
 
 .event-desc {
-  margin-bottom: 8px;
-  color: #333;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+  margin-bottom: 12px;
+  background-color: #f8f9fa;
+  padding: 8px;
+  border-radius: 4px;
 }
 
 .event-resolution {
   background-color: #f0f9ff;
-  padding: 8px;
-  border-radius: 4px;
-  margin-top: 8px;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border-left: 3px solid #52c41a;
+}
+
+.resolution-status {
+  color: #2e7d32;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
 }
 
 .resolution-time {
-  color: #2e7d32;
-  font-weight: 500;
+  color: #666;
+  font-size: 12px;
   margin-bottom: 4px;
 }
 
 .resolution-desc {
   color: #666;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .event-actions {
   display: flex;
+  justify-content: flex-end;
   gap: 8px;
-  margin-top: 8px;
 }
 
 /* 备注内容 */
