@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import request from '../utils/request'
+import * as transportOrderApi from '../api/transportOrder'
 
 // 运输订单数据存储
 export const useTransportOrderStore = defineStore('transportOrderStore', () => {
@@ -19,11 +20,7 @@ export const useTransportOrderStore = defineStore('transportOrderStore', () => {
   const fetchOrderById = async (id) => {
     loading.value = true
     try {
-      const response = await request({
-        url: `/transport-orders/${id}`,
-        method: 'get'
-      })
-
+      const response = await transportOrderApi.getTransportOrderById(id)
       return response.data
     } catch (error) {
       console.error('获取订单详情失败:', error)
@@ -42,18 +39,7 @@ export const useTransportOrderStore = defineStore('transportOrderStore', () => {
   const fetchOrders = async (params = {}) => {
     loading.value = true
     try {
-      const response = await request({
-        url: '/transport-orders/page',
-        method: 'get',
-        params: {
-          current: params.current || 1,
-          size: params.size || 10,
-          ...(params.keyword && { keyword: params.keyword }),
-          ...(params.transportStatus && { transportStatus: params.transportStatus }),
-          ...(params.paymentStatus && { paymentStatus: params.paymentStatus })
-        }
-      })
-
+      const response = await transportOrderApi.getTransportOrderPage(params)
       orders.value = response.data.records || []
       return response.data
     } catch (error) {
@@ -72,25 +58,9 @@ export const useTransportOrderStore = defineStore('transportOrderStore', () => {
   const createOrder = async (orderData) => {
     loading.value = true
     try {
-      // 确保数据格式正确
-      const submitData = {
-        ...orderData,
-        // 确保数字字段正确转换
-        cargoWeight: orderData.cargoWeight ? parseFloat(orderData.cargoWeight) : null,
-        cargoVolume: orderData.cargoVolume ? parseFloat(orderData.cargoVolume) : null,
-        quotedPrice: orderData.quotedPrice ? parseFloat(orderData.quotedPrice) : null,
-        actualPrice: orderData.actualPrice ? parseFloat(orderData.actualPrice) : null,
-        // 确保布尔字段正确转换
-        isOutsourced: orderData.isOutsourced ? 1 : 0
-      }
+      console.log('创建订单数据:', orderData) // 调试日志
 
-      console.log('创建订单数据:', submitData) // 调试日志
-
-      const response = await request({
-        url: '/transport-orders',
-        method: 'post',
-        data: submitData
-      })
+      const response = await transportOrderApi.createTransportOrder(orderData)
 
       console.log('创建订单响应:', response) // 调试日志
 
@@ -110,11 +80,7 @@ export const useTransportOrderStore = defineStore('transportOrderStore', () => {
   const updateOrder = async (id, orderData) => {
     loading.value = true
     try {
-      const response = await request({
-        url: `/transport-orders/${id}`,
-        method: 'put',
-        data: orderData
-      })
+      const response = await transportOrderApi.updateTransportOrder(id, orderData)
 
       // 更新本地缓存
       const index = orders.value.findIndex(order => order.id === id)
@@ -134,14 +100,7 @@ export const useTransportOrderStore = defineStore('transportOrderStore', () => {
   // 更新运输状态
   const updateTransportStatus = async (id, status, reason = '') => {
     try {
-      const response = await request({
-        url: `/transport-orders/${id}/transport-status`,
-        method: 'put',
-        params: {
-          status: status,
-          reason: reason
-        }
-      })
+      const response = await transportOrderApi.updateTransportStatus(id, status, reason)
 
       console.log('更新运输状态响应:', response) // 调试日志
 
@@ -161,14 +120,7 @@ export const useTransportOrderStore = defineStore('transportOrderStore', () => {
   // 更新款项状态
   const updatePaymentStatus = async (id, status, reason = '') => {
     try {
-      const response = await request({
-        url: `/transport-orders/${id}/payment-status`,
-        method: 'put',
-        params: {
-          status: status,
-          reason: reason
-        }
-      })
+      const response = await transportOrderApi.updatePaymentStatus(id, status, reason)
 
       console.log('更新款项状态响应:', response) // 调试日志
 
@@ -188,21 +140,13 @@ export const useTransportOrderStore = defineStore('transportOrderStore', () => {
   // 删除订单
   const deleteOrder = async (id) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/transport-orders/${id}`, {
-        method: 'DELETE'
-      })
-      
-      const result = await response.json()
-      
-      if (result.code === 200) {
-        const index = orders.value.findIndex(order => order.id === id)
-        if (index !== -1) {
-          orders.value.splice(index, 1)
-        }
-        return true
-      } else {
-        throw new Error(result.message || '删除订单失败')
+      const response = await transportOrderApi.deleteTransportOrder(id)
+
+      const index = orders.value.findIndex(order => order.id === id)
+      if (index !== -1) {
+        orders.value.splice(index, 1)
       }
+      return true
     } catch (error) {
       console.error('删除订单失败:', error)
       // 如果API不可用，使用本地删除
@@ -218,14 +162,8 @@ export const useTransportOrderStore = defineStore('transportOrderStore', () => {
   // 获取统计数据
   const getStatistics = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/transport-orders/statistics`)
-      const result = await response.json()
-      
-      if (result.code === 200) {
-        return result.data
-      } else {
-        throw new Error(result.message || '获取统计数据失败')
-      }
+      const response = await transportOrderApi.getTransportOrderStatistics()
+      return response.data
     } catch (error) {
       console.error('获取统计数据失败:', error)
       // 如果API不可用，使用本地计算

@@ -114,24 +114,53 @@ public class OrderCostController {
      * 删除订单成本
      */
     @DeleteMapping("/{id}")
-    public Map<String, Object> deleteCost(@PathVariable Long id, @RequestParam Long orderId) {
-        Map<String, Object> response = new HashMap<>();
-        
+    public ApiResponse<Void> deleteCost(@PathVariable Long id, @RequestParam Long orderId, HttpServletRequest request) {
         try {
+            Long userId = getUserIdFromRequest(request);
+
+            // 先获取现有成本记录
+            OrderCost existingCost = orderCostService.getById(id);
+            if (existingCost == null) {
+                return ApiResponse.error(404, "成本记录不存在");
+            }
+
+            // 验证订单是否属于当前用户
+            TransportOrder order = transportOrderService.getByIdAndUserId(existingCost.getOrderId(), userId);
+            if (order == null) {
+                return ApiResponse.error(404, "订单不存在或无权访问");
+            }
+
             boolean success = orderCostService.deleteCost(id, orderId);
-            
+
             if (success) {
-                response.put("code", 200);
-                response.put("message", "删除成功");
+                return ApiResponse.success("删除成功", null);
             } else {
-                response.put("code", 500);
-                response.put("message", "删除失败");
+                return ApiResponse.error("删除失败");
             }
         } catch (Exception e) {
-            response.put("code", 500);
-            response.put("message", "删除失败：" + e.getMessage());
+            return ApiResponse.error("删除失败：" + e.getMessage());
         }
-        
-        return response;
+    }
+
+    /**
+     * 从请求中获取用户ID
+     */
+    private Long getUserIdFromRequest(HttpServletRequest request) {
+        String token = getTokenFromRequest(request);
+        if (token == null || !jwtUtil.validateToken(token)) {
+            throw new RuntimeException("认证令牌无效");
+        }
+        return jwtUtil.getUserIdFromToken(token);
+    }
+
+    /**
+     * 从请求中获取token
+     */
+    private String getTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
     }
 }

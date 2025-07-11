@@ -1,10 +1,16 @@
 package com.ansu.api.controller;
 
+import com.ansu.api.domain.dto.ApiResponse;
 import com.ansu.api.domain.entity.OrderEvent;
+import com.ansu.api.domain.entity.TransportOrder;
 import com.ansu.api.service.OrderEventService;
+import com.ansu.api.service.TransportOrderService;
+import com.ansu.api.service.UserService;
+import com.ansu.api.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,89 +25,143 @@ public class OrderEventController {
     @Autowired
     private OrderEventService orderEventService;
 
+    @Autowired
+    private TransportOrderService transportOrderService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
     /**
      * 根据订单ID查询事件列表
      */
     @GetMapping("/order/{orderId}")
-    public Map<String, Object> getEventsByOrderId(@PathVariable Long orderId) {
-        List<OrderEvent> events = orderEventService.getEventsByOrderId(orderId);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "查询成功");
-        response.put("data", events);
-        
-        return response;
+    public ApiResponse<List<OrderEvent>> getEventsByOrderId(@PathVariable Long orderId, HttpServletRequest request) {
+        try {
+            Long userId = getUserIdFromRequest(request);
+
+            // 验证订单是否属于当前用户
+            TransportOrder order = transportOrderService.getByIdAndUserId(orderId, userId);
+            if (order == null) {
+                return ApiResponse.error(404, "订单不存在或无权访问");
+            }
+
+            List<OrderEvent> events = orderEventService.getEventsByOrderId(orderId);
+            return ApiResponse.success("查询成功", events);
+        } catch (Exception e) {
+            return ApiResponse.error("查询失败：" + e.getMessage());
+        }
     }
 
     /**
      * 添加订单事件
      */
     @PostMapping
-    public Map<String, Object> addEvent(@RequestBody OrderEvent event) {
-        Map<String, Object> response = new HashMap<>();
-        
+    public ApiResponse<OrderEvent> addEvent(@RequestBody OrderEvent event, HttpServletRequest request) {
         try {
+            Long userId = getUserIdFromRequest(request);
+
+            // 验证订单是否属于当前用户
+            TransportOrder order = transportOrderService.getByIdAndUserId(event.getOrderId(), userId);
+            if (order == null) {
+                return ApiResponse.error(404, "订单不存在或无权访问");
+            }
+
+            // 设置创建人ID
+            event.setCreateUserId(userId);
+
             OrderEvent savedEvent = orderEventService.addEvent(event);
-            
-            response.put("code", 200);
-            response.put("message", "添加成功");
-            response.put("data", savedEvent);
+            return ApiResponse.success("添加成功", savedEvent);
         } catch (Exception e) {
-            response.put("code", 500);
-            response.put("message", "添加失败：" + e.getMessage());
+            return ApiResponse.error("添加失败：" + e.getMessage());
         }
-        
-        return response;
     }
 
     /**
      * 解决事件
      */
     @PutMapping("/{id}/resolve")
-    public Map<String, Object> resolveEvent(@PathVariable Long id, @RequestParam String resolutionDescription) {
-        Map<String, Object> response = new HashMap<>();
-        
+    public ApiResponse<Void> resolveEvent(@PathVariable Long id, @RequestParam String resolutionDescription, HttpServletRequest request) {
         try {
-            boolean success = orderEventService.resolveEvent(id, resolutionDescription, 1L);
-            
+            Long userId = getUserIdFromRequest(request);
+
+            // 先获取事件信息
+            OrderEvent event = orderEventService.getById(id);
+            if (event == null) {
+                return ApiResponse.error(404, "事件不存在");
+            }
+
+            // 验证订单是否属于当前用户
+            TransportOrder order = transportOrderService.getByIdAndUserId(event.getOrderId(), userId);
+            if (order == null) {
+                return ApiResponse.error(404, "订单不存在或无权访问");
+            }
+
+            boolean success = orderEventService.resolveEvent(id, resolutionDescription, userId);
+
             if (success) {
-                response.put("code", 200);
-                response.put("message", "事件已解决");
+                return ApiResponse.success("事件已解决", null);
             } else {
-                response.put("code", 500);
-                response.put("message", "解决失败");
+                return ApiResponse.error("解决失败");
             }
         } catch (Exception e) {
-            response.put("code", 500);
-            response.put("message", "解决失败：" + e.getMessage());
+            return ApiResponse.error("解决失败：" + e.getMessage());
         }
-        
-        return response;
     }
 
     /**
      * 删除事件
      */
     @DeleteMapping("/{id}")
-    public Map<String, Object> deleteEvent(@PathVariable Long id) {
-        Map<String, Object> response = new HashMap<>();
-        
+    public ApiResponse<Void> deleteEvent(@PathVariable Long id, HttpServletRequest request) {
         try {
+            Long userId = getUserIdFromRequest(request);
+
+            // 先获取事件信息
+            OrderEvent event = orderEventService.getById(id);
+            if (event == null) {
+                return ApiResponse.error(404, "事件不存在");
+            }
+
+            // 验证订单是否属于当前用户
+            TransportOrder order = transportOrderService.getByIdAndUserId(event.getOrderId(), userId);
+            if (order == null) {
+                return ApiResponse.error(404, "订单不存在或无权访问");
+            }
+
             boolean success = orderEventService.deleteEvent(id);
-            
+
             if (success) {
-                response.put("code", 200);
-                response.put("message", "删除成功");
+                return ApiResponse.success("删除成功", null);
             } else {
-                response.put("code", 500);
-                response.put("message", "删除失败");
+                return ApiResponse.error("删除失败");
             }
         } catch (Exception e) {
-            response.put("code", 500);
-            response.put("message", "删除失败：" + e.getMessage());
+            return ApiResponse.error("删除失败：" + e.getMessage());
         }
-        
-        return response;
+    }
+
+    /**
+     * 从请求中获取用户ID
+     */
+    private Long getUserIdFromRequest(HttpServletRequest request) {
+        String token = getTokenFromRequest(request);
+        if (token == null || !jwtUtil.validateToken(token)) {
+            throw new RuntimeException("认证令牌无效");
+        }
+        return jwtUtil.getUserIdFromToken(token);
+    }
+
+    /**
+     * 从请求中获取token
+     */
+    private String getTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
     }
 }

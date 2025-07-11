@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import request from '../utils/request'
+import * as orderCostApi from '../api/orderCost'
 
 // 订单成本数据存储
 export const useOrderCostStore = defineStore('orderCostStore', () => {
@@ -16,11 +17,7 @@ export const useOrderCostStore = defineStore('orderCostStore', () => {
   const fetchCostsByOrderId = async (orderId) => {
     loading.value = true
     try {
-      const response = await request({
-        url: `/order-costs/order/${orderId}`,
-        method: 'get'
-      })
-
+      const response = await orderCostApi.getOrderCostsByOrderId(orderId)
       const freshCosts = response.data || []
       costs.value = freshCosts
       return freshCosts
@@ -39,22 +36,9 @@ export const useOrderCostStore = defineStore('orderCostStore', () => {
   const addCost = async (costData) => {
     loading.value = true
     try {
-      const response = await fetch(`${API_BASE_URL}/order-costs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(costData)
-      })
-      
-      const result = await response.json()
-      
-      if (result.code === 200) {
-        costs.value.push(result.data)
-        return result.data
-      } else {
-        throw new Error(result.message || '添加成本失败')
-      }
+      const response = await orderCostApi.addOrderCost(costData)
+      costs.value.push(response.data)
+      return response.data
     } catch (error) {
       console.error('添加成本失败:', error)
       // 如果API不可用，使用本地模拟
@@ -73,21 +57,12 @@ export const useOrderCostStore = defineStore('orderCostStore', () => {
   // 删除成本
   const deleteCost = async (costId, orderId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/order-costs/${costId}?orderId=${orderId}`, {
-        method: 'DELETE'
-      })
-      
-      const result = await response.json()
-      
-      if (result.code === 200) {
-        const index = costs.value.findIndex(cost => cost.id === costId)
-        if (index !== -1) {
-          costs.value.splice(index, 1)
-        }
-        return true
-      } else {
-        throw new Error(result.message || '删除成本失败')
+      const response = await orderCostApi.deleteOrderCost(costId, orderId)
+      const index = costs.value.findIndex(cost => cost.id === costId)
+      if (index !== -1) {
+        costs.value.splice(index, 1)
       }
+      return true
     } catch (error) {
       console.error('删除成本失败:', error)
       // 如果API不可用，使用本地删除
@@ -102,15 +77,7 @@ export const useOrderCostStore = defineStore('orderCostStore', () => {
   
   // 获取成本类型名称
   const getCostTypeName = (type) => {
-    const typeMap = {
-      'FUEL': '加油费',
-      'TOLL': '过路费',
-      'FINE': '违章费',
-      'MAINTENANCE': '维修费',
-      'OUTSOURCE': '外包费',
-      'OTHER': '其他费用'
-    }
-    return typeMap[type] || type
+    return orderCostApi.getCostTypeName(type)
   }
   
   // 模拟数据

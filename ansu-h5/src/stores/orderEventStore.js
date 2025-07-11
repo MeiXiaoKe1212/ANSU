@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import request from '../utils/request'
+import * as orderEventApi from '../api/orderEvent'
 
 // 订单事件数据存储
 export const useOrderEventStore = defineStore('orderEventStore', () => {
@@ -16,11 +17,7 @@ export const useOrderEventStore = defineStore('orderEventStore', () => {
   const fetchEventsByOrderId = async (orderId) => {
     loading.value = true
     try {
-      const response = await request({
-        url: `/order-events/order/${orderId}`,
-        method: 'get'
-      })
-
+      const response = await orderEventApi.getOrderEventsByOrderId(orderId)
       events.value = response.data || []
       return response.data
     } catch (error) {
@@ -39,23 +36,11 @@ export const useOrderEventStore = defineStore('orderEventStore', () => {
     try {
       console.log('发送事件数据到API:', eventData) // 调试日志
 
-      const response = await fetch(`${API_BASE_URL}/order-events`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(eventData)
-      })
+      const response = await orderEventApi.addOrderEvent(eventData)
+      console.log('API响应:', response) // 调试日志
 
-      const result = await response.json()
-      console.log('API响应:', result) // 调试日志
-
-      if (result.code === 200) {
-        events.value.unshift(result.data)
-        return result.data
-      } else {
-        throw new Error(result.message || '添加事件失败')
-      }
+      events.value.unshift(response.data)
+      return response.data
     } catch (error) {
       console.error('添加事件失败:', error)
       // 如果API不可用，使用本地模拟
@@ -75,23 +60,15 @@ export const useOrderEventStore = defineStore('orderEventStore', () => {
   // 解决事件
   const resolveEvent = async (eventId, resolutionDescription) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/order-events/${eventId}/resolve?resolutionDescription=${encodeURIComponent(resolutionDescription)}`, {
-        method: 'PUT'
-      })
-      
-      const result = await response.json()
-      
-      if (result.code === 200) {
-        const index = events.value.findIndex(event => event.id === eventId)
-        if (index !== -1) {
-          events.value[index].isResolved = 1
-          events.value[index].resolutionTime = new Date().toISOString()
-          events.value[index].resolutionDescription = resolutionDescription
-        }
-        return true
-      } else {
-        throw new Error(result.message || '解决事件失败')
+      const response = await orderEventApi.resolveOrderEvent(eventId, resolutionDescription)
+
+      const index = events.value.findIndex(event => event.id === eventId)
+      if (index !== -1) {
+        events.value[index].isResolved = 1
+        events.value[index].resolutionTime = new Date().toISOString()
+        events.value[index].resolutionDescription = resolutionDescription
       }
+      return true
     } catch (error) {
       console.error('解决事件失败:', error)
       // 如果API不可用，使用本地更新
@@ -109,21 +86,13 @@ export const useOrderEventStore = defineStore('orderEventStore', () => {
   // 删除事件
   const deleteEvent = async (eventId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/order-events/${eventId}`, {
-        method: 'DELETE'
-      })
-      
-      const result = await response.json()
-      
-      if (result.code === 200) {
-        const index = events.value.findIndex(event => event.id === eventId)
-        if (index !== -1) {
-          events.value.splice(index, 1)
-        }
-        return true
-      } else {
-        throw new Error(result.message || '删除事件失败')
+      const response = await orderEventApi.deleteOrderEvent(eventId)
+
+      const index = events.value.findIndex(event => event.id === eventId)
+      if (index !== -1) {
+        events.value.splice(index, 1)
       }
+      return true
     } catch (error) {
       console.error('删除事件失败:', error)
       // 如果API不可用，使用本地删除

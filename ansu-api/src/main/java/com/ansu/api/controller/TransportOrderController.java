@@ -128,25 +128,26 @@ public class TransportOrderController {
      * 删除运输订单
      */
     @DeleteMapping("/{id}")
-    public Map<String, Object> deleteOrder(@PathVariable Long id) {
-        Map<String, Object> response = new HashMap<>();
-        
+    public ApiResponse<Void> deleteOrder(@PathVariable Long id, HttpServletRequest request) {
         try {
+            Long userId = getUserIdFromRequest(request);
+
+            // 先检查订单是否存在且属于当前用户
+            TransportOrder existingOrder = transportOrderService.getByIdAndUserId(id, userId);
+            if (existingOrder == null) {
+                return ApiResponse.error(404, "订单不存在或无权访问");
+            }
+
             boolean success = transportOrderService.removeById(id);
-            
+
             if (success) {
-                response.put("code", 200);
-                response.put("message", "删除成功");
+                return ApiResponse.success("删除成功", null);
             } else {
-                response.put("code", 500);
-                response.put("message", "删除失败");
+                return ApiResponse.error("删除失败");
             }
         } catch (Exception e) {
-            response.put("code", 500);
-            response.put("message", "删除失败：" + e.getMessage());
+            return ApiResponse.error("删除失败：" + e.getMessage());
         }
-        
-        return response;
     }
 
     /**
@@ -223,15 +224,14 @@ public class TransportOrderController {
      * 获取订单统计数据
      */
     @GetMapping("/statistics")
-    public Map<String, Object> getStatistics() {
-        Map<String, Object> statistics = transportOrderService.getOrderStatistics();
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "查询成功");
-        response.put("data", statistics);
-        
-        return response;
+    public ApiResponse<Map<String, Object>> getStatistics(HttpServletRequest request) {
+        try {
+            Long userId = getUserIdFromRequest(request);
+            Map<String, Object> statistics = transportOrderService.getOrderStatisticsByUserId(userId);
+            return ApiResponse.success("查询成功", statistics);
+        } catch (Exception e) {
+            return ApiResponse.error("查询失败：" + e.getMessage());
+        }
     }
 
     /**
