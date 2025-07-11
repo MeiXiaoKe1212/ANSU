@@ -557,6 +557,14 @@ onUnmounted(() => {
   border-bottom: 1px solid #eee;
 }
 
+.card-tabs :deep(.t-tabs) {
+  z-index: auto !important;
+}
+
+.card-tabs :deep(.t-tabs__nav) {
+  z-index: auto !important;
+}
+
 .card-body {
   padding: 15px;
 }
