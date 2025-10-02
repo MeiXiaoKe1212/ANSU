@@ -1,49 +1,50 @@
 <template>
   <div>
-    <t-navbar title="主页" fixed />
-    
+    <t-navbar title="运输管理系统" fixed />
+
     <div class="home-container">
       <div class="welcome-card">
         <h2>欢迎, {{ username }}</h2>
-        <p>这是您的账单统计信息</p>
+        <p>运输中介管理系统 - 订单统计信息</p>
       </div>
 
-      <!-- 账单统计卡片 -->
+      <!-- 订单统计卡片 -->
       <div class="stats-card">
         <div class="stats-summary">
           <div class="stats-item">
-            <div class="stats-value">{{ billStore.bills.length }}</div>
-            <div class="stats-label">账单总数</div>
+            <div class="stats-value">{{ orderStore.orders.length }}</div>
+            <div class="stats-label">订单总数</div>
           </div>
           <div class="stats-item">
-            <div class="stats-value">¥{{ totalBillAmount }}</div>
-            <div class="stats-label">总金额</div>
+            <div class="stats-value">¥{{ totalRevenue }}</div>
+            <div class="stats-label">总收入</div>
+          </div>
+          <div class="stats-item">
+            <div class="stats-value">¥{{ totalProfit }}</div>
+            <div class="stats-label">总利润</div>
           </div>
           <div class="stats-item">
             <div class="stats-value">{{ outsourcedCount }}</div>
-            <div class="stats-label">外派账单</div>
-          </div>
-          <div class="stats-item">
-            <div class="stats-value">{{ selfOwnedCount }}</div>
-            <div class="stats-label">自有账单</div>
+            <div class="stats-label">外包订单</div>
           </div>
         </div>
       </div>
 
-      <!-- 饼图：外派/自有比例 -->
-      <div class="chart-card">
-        <div class="card-header">
-          <h3>账单类型分布</h3>
-        </div>
-        <div class="card-body">
-          <div id="pieChart" class="chart-container"></div>
+      <!-- 状态统计 -->
+      <div class="status-stats">
+        <h3>订单状态统计</h3>
+        <div class="status-grid">
+          <div class="status-item" v-for="(count, status) in statusStats" :key="status">
+            <div class="status-count">{{ count }}</div>
+            <div class="status-name">{{ getStatusName(status) }}</div>
+          </div>
         </div>
       </div>
 
-      <!-- 图表选项卡 -->
+      <!-- 利润趋势图表 -->
       <div class="chart-card">
         <div class="card-header">
-          <h3>账单金额趋势</h3>
+          <h3>利润趋势</h3>
         </div>
         <div class="card-tabs">
           <t-tabs v-model="activeTimeRange">
@@ -57,34 +58,36 @@
         </div>
       </div>
 
-      <!-- 图表类型切换 -->
-      <div class="chart-type-switch">
-        <t-radio-group v-model="chartType">
-          <t-radio value="line">折线图</t-radio>
-          <t-radio value="bar">柱状图</t-radio>
-        </t-radio-group>
+      <!-- 饼图：外派/自有比例 -->
+      <div class="chart-card">
+        <div class="card-header">
+          <h3>订单类型分布</h3>
+        </div>
+        <div class="card-body">
+          <div id="pieChart" class="chart-container"></div>
+        </div>
       </div>
     </div>
 
     <!-- 悬浮按钮 -->
-    <t-fab class="custom-fab" :icon="addIconFunc" @click="showAddBillForm" />
+    <t-fab class="custom-fab" :icon="addIconFunc" @click="showAddOrderForm" />
 
-    <!-- 账单表单 -->
-    <bill-form 
-      v-model:visible="billFormVisible"
-      :bill-data="currentBillData"
-      @submit="handleBillSubmit"
+    <!-- 运输订单表单 -->
+    <transport-order-form
+      v-model:visible="orderFormVisible"
+      :order-data="currentOrderData"
+      @submit="handleOrderSubmit"
       @close="handleFormClose"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, h, onMounted, watch, onUnmounted } from 'vue'
+import { ref, computed, h, onMounted, watch, onUnmounted, nextTick } from 'vue'
 import { AddIcon } from 'tdesign-icons-vue-next'
 import { Toast, Tabs, TabPanel, RadioGroup, Radio } from 'tdesign-mobile-vue'
-import { useBillStore } from '../stores/billStore'
-import BillForm from '../components/BillForm.vue'
+import { useTransportOrderStore } from '../stores/transportOrderStore'
+import TransportOrderForm from '../components/TransportOrderForm.vue'
 import * as echarts from 'echarts/core'
 import { 
   TitleComponent, 
@@ -107,29 +110,66 @@ echarts.use([
   CanvasRenderer
 ])
 
-const billStore = useBillStore()
-const username = computed(() => localStorage.getItem('username') || '用户')
+const orderStore = useTransportOrderStore()
+const username = computed(() => localStorage.getItem('realName') || localStorage.getItem('username') || '用户')
 
 // 图表相关
 const activeTimeRange = ref('week')
-const chartType = ref('line')
 let pieChartInstance = null
 let trendChartInstance = null
 
-// 账单统计数据
-const totalBillAmount = computed(() => {
-  return billStore.bills
-    .reduce((sum, bill) => sum + (bill.totalCost || 0), 0)
+// 订单表单控制
+const orderFormVisible = ref(false)
+const currentOrderData = ref({})
+
+// 订单统计数据
+const totalRevenue = computed(() => {
+  if (!orderStore.orders || !Array.isArray(orderStore.orders)) return '0.00'
+  return orderStore.orders
+    .reduce((sum, order) => sum + (order.actualPrice || 0), 0)
+    .toFixed(2)
+})
+
+const totalProfit = computed(() => {
+  if (!orderStore.orders || !Array.isArray(orderStore.orders)) return '0.00'
+  return orderStore.orders
+    .reduce((sum, order) => sum + (order.profit || 0), 0)
     .toFixed(2)
 })
 
 const outsourcedCount = computed(() => {
-  return billStore.bills.filter(bill => bill.isOutsourced).length
+  if (!orderStore.orders || !Array.isArray(orderStore.orders)) return 0
+  return orderStore.orders.filter(order => order.isOutsourced === 1).length
 })
 
 const selfOwnedCount = computed(() => {
-  return billStore.bills.filter(bill => !bill.isOutsourced).length
+  if (!orderStore.orders || !Array.isArray(orderStore.orders)) return 0
+  return orderStore.orders.filter(order => order.isOutsourced === 0).length
 })
+
+// 状态统计
+const statusStats = computed(() => {
+  const stats = {}
+  if (orderStore.orders && Array.isArray(orderStore.orders)) {
+    orderStore.orders.forEach(order => {
+      const status = order.transportStatus
+      stats[status] = (stats[status] || 0) + 1
+    })
+  }
+  return stats
+})
+
+// 获取状态中文名称
+const getStatusName = (status) => {
+  const statusMap = {
+    'CREATED': '已创建',
+    'DEPARTED': '已出发',
+    'TRANSPORTING': '运输中',
+    'EXCEPTION': '异常',
+    'DELIVERED': '已送达'
+  }
+  return statusMap[status] || status
+}
 
 // 初始化饼图
 const initPieChart = () => {
@@ -171,8 +211,8 @@ const initPieChart = () => {
           show: false
         },
         data: [
-          { value: outsourcedCount.value, name: '外派账单' },
-          { value: selfOwnedCount.value, name: '自有账单' }
+          { value: outsourcedCount.value, name: '外包订单' },
+          { value: selfOwnedCount.value, name: '自有订单' }
         ]
       }
     ]
@@ -216,26 +256,84 @@ const getTrendData = () => {
     amountByDate[date] = 0
   })
   
-  billStore.bills.forEach(bill => {
-    if (!bill.createTime) return
-    
-    const billDate = new Date(bill.createTime)
-    let dateKey
-    
-    if (activeTimeRange.value === 'halfYear') {
-      dateKey = formatMonth(billDate)
-    } else {
-      dateKey = formatDate(billDate)
-    }
-    
-    if (amountByDate[dateKey] !== undefined) {
-      amountByDate[dateKey] += (bill.totalCost || 0)
-    }
-  })
-  
+  // 确保orders存在
+  if (orderStore.orders && Array.isArray(orderStore.orders)) {
+    orderStore.orders.forEach(order => {
+      if (!order.createTime) return
+
+      const orderDate = new Date(order.createTime)
+      let dateKey
+
+      if (activeTimeRange.value === 'halfYear') {
+        dateKey = formatMonth(orderDate)
+      } else {
+        dateKey = formatDate(orderDate)
+      }
+
+      if (amountByDate[dateKey] !== undefined) {
+        amountByDate[dateKey] += (order.actualPrice || order.quotedPrice || 0)
+      }
+    })
+  }
+
   return {
-    dates,
+    dates: dates,
     amounts: dates.map(date => amountByDate[date])
+  }
+}
+
+// 获取利润趋势数据
+const getProfitTrendData = () => {
+  const today = new Date()
+  const profitByDate = {}
+
+  // 根据时间范围生成日期
+  if (activeTimeRange.value === 'week') {
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(today.getDate() - i)
+      const dateKey = formatDate(date)
+      profitByDate[dateKey] = 0
+    }
+  } else if (activeTimeRange.value === 'month') {
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(today.getDate() - i)
+      const dateKey = formatDate(date)
+      profitByDate[dateKey] = 0
+    }
+  } else {
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(today)
+      date.setMonth(today.getMonth() - i)
+      const dateKey = formatMonth(date)
+      profitByDate[dateKey] = 0
+    }
+  }
+
+  // 统计利润数据 - 确保orders存在
+  if (orderStore.orders && Array.isArray(orderStore.orders)) {
+    orderStore.orders.forEach(order => {
+      if (!order.createTime) return
+
+      const orderDate = new Date(order.createTime)
+      let dateKey
+
+      if (activeTimeRange.value === 'halfYear') {
+        dateKey = formatMonth(orderDate)
+      } else {
+        dateKey = formatDate(orderDate)
+      }
+
+      if (profitByDate[dateKey] !== undefined) {
+        profitByDate[dateKey] += (order.profit || 0)
+      }
+    })
+  }
+
+  return {
+    dates: Object.keys(profitByDate),
+    profits: Object.values(profitByDate)
   }
 }
 
@@ -250,9 +348,9 @@ const initTrendChart = () => {
 // 更新趋势图
 const updateTrendChart = () => {
   if (!trendChartInstance) return
-  
-  const { dates, amounts } = getTrendData()
-  
+
+  const { dates, profits } = getProfitTrendData()
+
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -274,13 +372,13 @@ const updateTrendChart = () => {
     },
     series: [
       {
-        name: '账单金额',
-        type: chartType.value,
-        data: amounts,
+        name: '利润',
+        type: 'line',
+        data: profits,
         itemStyle: {
-          color: '#0052d9'
+          color: '#52c41a'
         },
-        areaStyle: chartType.value === 'line' ? {
+        areaStyle: {
           color: {
             type: 'linear',
             x: 0,
@@ -288,11 +386,11 @@ const updateTrendChart = () => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(0,82,217,0.5)' },
-              { offset: 1, color: 'rgba(0,82,217,0.1)' }
+              { offset: 0, color: 'rgba(82,196,26,0.5)' },
+              { offset: 1, color: 'rgba(82,196,26,0.1)' }
             ]
           }
-        } : undefined
+        }
       }
     ]
   }
@@ -310,8 +408,8 @@ const formatMonth = (date) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
-// 监听时间范围和图表类型变化
-watch([activeTimeRange, chartType], () => {
+// 监听时间范围变化
+watch(activeTimeRange, () => {
   updateTrendChart()
 })
 
@@ -324,36 +422,46 @@ const handleResize = () => {
 // 悬浮按钮图标
 const addIconFunc = () => h(AddIcon, { size: '24px' })
 
-// 账单表单控制
-const billFormVisible = ref(false)
-const currentBillData = ref({})
-
-// 显示添加账单表单
-const showAddBillForm = () => {
-  currentBillData.value = {}
-  billFormVisible.value = true
+// 显示添加订单表单
+const showAddOrderForm = () => {
+  currentOrderData.value = {}
+  orderFormVisible.value = true
 }
 
-// 处理账单提交
-const handleBillSubmit = (formData) => {
-  billStore.addBill(formData)
-  Toast({ message: '账单添加成功', theme: 'success' })
-  
-  // 更新图表
-  initPieChart()
-  updateTrendChart()
+// 处理订单提交
+const handleOrderSubmit = async (formData) => {
+  try {
+    await orderStore.createOrder(formData)
+    Toast({ message: '订单创建成功', theme: 'success' })
+
+    // 更新图表
+    initPieChart()
+    updateTrendChart()
+  } catch (error) {
+    Toast({ message: error.message || '创建失败', theme: 'error' })
+  }
 }
 
 // 处理表单关闭
 const handleFormClose = () => {
-  currentBillData.value = {}
+  currentOrderData.value = {}
 }
 
 // 组件挂载后初始化图表
-onMounted(() => {
-  initPieChart()
-  initTrendChart()
-  
+onMounted(async () => {
+  // 先获取最新的订单数据
+  try {
+    await orderStore.fetchOrders({ size: 100 })
+  } catch (error) {
+    console.error('获取订单数据失败:', error)
+  }
+
+  // 使用nextTick确保DOM已经渲染完成
+  nextTick(() => {
+    initPieChart()
+    initTrendChart()
+  })
+
   window.addEventListener('resize', handleResize)
 })
 
@@ -449,6 +557,14 @@ onUnmounted(() => {
   border-bottom: 1px solid #eee;
 }
 
+.card-tabs :deep(.t-tabs) {
+  z-index: auto !important;
+}
+
+.card-tabs :deep(.t-tabs__nav) {
+  z-index: auto !important;
+}
+
 .card-body {
   padding: 15px;
 }
@@ -458,10 +574,46 @@ onUnmounted(() => {
   width: 100%;
 }
 
-.chart-type-switch {
-  display: flex;
-  justify-content: center;
+
+
+.status-stats {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 20px;
   margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.status-stats h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 12px;
+}
+
+.status-item {
+  text-align: center;
+  padding: 12px 8px;
+  border-radius: 8px;
+  background-color: #f5f7fa;
+  border: 1px solid #e7e7e7;
+}
+
+.status-count {
+  font-size: 18px;
+  font-weight: bold;
+  color: #0052d9;
+  margin-bottom: 4px;
+}
+
+.status-name {
+  font-size: 12px;
+  color: #666;
 }
 
 @media (min-width: 768px) {
