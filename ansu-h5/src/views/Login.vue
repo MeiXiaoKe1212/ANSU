@@ -25,15 +25,35 @@
           ref="passwordInput"
         />
       </div>
-      
-      <button 
-        class="login-button" 
-        :class="{ loading: isLoading }" 
+
+      <div class="remember-me">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            v-model="rememberMe"
+          />
+          <span class="checkmark"></span>
+          记住我
+        </label>
+      </div>
+
+      <button
+        class="login-button"
+        :class="{ loading: isLoading }"
         @click="handleLogin"
         :disabled="isLoading"
       >
         {{ isLoading ? '登录中...' : '登录' }}
       </button>
+
+      <div class="forgot-password-link">
+        <a href="#" @click.prevent="goToForgotPassword">忘记密码？</a>
+      </div>
+
+      <div class="register-link">
+        <span>还没有账号？</span>
+        <a href="#" @click.prevent="goToRegister">立即注册</a>
+      </div>
     </div>
   </div>
 </template>
@@ -41,39 +61,150 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '../stores/userStore'
+import { Toast } from 'tdesign-mobile-vue'
 
 const router = useRouter()
+const userStore = useUserStore()
+
 const username = ref('')
 const password = ref('')
+const rememberMe = ref(false)
 const isLoading = ref(false)
 const passwordInput = ref(null)
+
+// 页面加载时检查是否有保存的登录信息
+const loadSavedCredentials = () => {
+  const savedUsername = localStorage.getItem('savedUsername')
+  const savedRememberMe = localStorage.getItem('rememberMe') === 'true'
+
+  if (savedUsername && savedRememberMe) {
+    username.value = savedUsername
+    rememberMe.value = true
+  }
+}
+
+// 页面加载时调用
+loadSavedCredentials()
 
 const focusPassword = () => {
   passwordInput.value.focus()
 }
 
-const handleLogin = () => {
+const handleLogin = async () => {
   if (!username.value || !password.value) {
-    alert('请输入用户名和密码')
+    Toast({
+      message: '请输入用户名和密码',
+      theme: 'warning'
+    })
     return
   }
-  
+
   isLoading.value = true
-  
-  // 模拟登录请求
-  setTimeout(() => {
-    // 假设登录成功
-    const token = 'dummy_token_' + Date.now()
-    localStorage.setItem('token', token)
-    localStorage.setItem('username', username.value)
-    
+
+  try {
+    const result = await userStore.login({
+      username: username.value,
+      password: password.value
+    })
+
+    if (result.success) {
+      // 处理记住我功能
+      if (rememberMe.value) {
+        localStorage.setItem('savedUsername', username.value)
+        localStorage.setItem('rememberMe', 'true')
+      } else {
+        localStorage.removeItem('savedUsername')
+        localStorage.removeItem('rememberMe')
+      }
+
+      Toast({
+        message: result.message,
+        theme: 'success'
+      })
+      router.push('/home')
+    } else {
+      Toast({
+        message: result.message,
+        theme: 'error'
+      })
+    }
+  } catch (error) {
+    console.error('登录失败:', error)
+    Toast({
+      message: '登录失败，请稍后重试',
+      theme: 'error'
+    })
+  } finally {
     isLoading.value = false
-    router.push('/home')
-  }, 1000)
+  }
+}
+
+const goToRegister = () => {
+  router.push('/register')
+}
+
+const goToForgotPassword = () => {
+  router.push('/forgot-password')
 }
 </script>
 
 <style scoped>
+.register-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #666;
+}
+
+.register-link a {
+  color: #0052d9;
+  text-decoration: none;
+  margin-left: 5px;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
+
+.forgot-password-link {
+  text-align: center;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.forgot-password-link a {
+  color: #0052d9;
+  text-decoration: none;
+}
+
+.forgot-password-link a:hover {
+  text-decoration: underline;
+}
+
+.remember-me {
+  margin-bottom: 20px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checkmark {
+  margin-left: 4px;
+}
+</style>
 .login-container {
   display: flex;
   justify-content: center;
